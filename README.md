@@ -9,7 +9,8 @@
 ## Project Setup
 ```bash
 
-cd restaurant-project
+cd restaurant-backend
+
 
 npm install express dotenv cors bcryptjs jsonwebtoken
 

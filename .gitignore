@@ -1,4 +1,5 @@
 restaurant-backend/node_modules/
 restaurant-frontend/node_modules/
 
-.env
+restaurant-backend/node_modules/
+restaurant-frontend/node_modules/

@@ -163,3 +163,5 @@ CREATE TABLE inventory_logs (
   FOREIGN KEY (ingredient_id) REFERENCES ingredients(id),
   FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
+INSERT INTO roles (name) VALUES ('admin'), ('ban_hang'), ('bep');
+INSERT INTO categories (name) VALUES ('Món chính'), ('Món phụ'), ('Đồ uống'), ('Tráng miệng');

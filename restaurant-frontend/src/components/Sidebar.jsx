@@ -8,6 +8,8 @@ const menuItems = [
   { path: "/admin/kitchen", icon: "👨‍🍳", label: "Nhà bếp" },
   { path: "/admin/reports", icon: "📈", label: "Báo cáo" },
   { path: "/admin/settings", icon: "⚙️", label: "Cài đặt" },
+  { path: "/admin/staff", icon: "👥", label: "Nhân sự" },
+  { path: "/admin/menu", icon: "🍽️", label: "Thực đơn" },
 ];
 
 export default function Sidebar() {

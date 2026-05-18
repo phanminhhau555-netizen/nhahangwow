@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-
+const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-
+router.get('/accounts', verifyToken, isAdmin, authController.getAccounts);
+router.delete('/accounts/:id', verifyToken, isAdmin, authController.deleteAccount);
+router.get('/roles', authController.getRoles);
 module.exports = router;

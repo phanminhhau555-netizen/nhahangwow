@@ -131,9 +131,9 @@ export default function Dashboard() {
           color="bg-orange-50"
         />
         <StatCard
-          icon="⭐"
-          label="Đánh giá"
-          value="4.8 / 5"
+          icon="👥"
+          label="Tổng khách hàng"
+          value={stats.tong_khach || 0}
           change={0.3}
           color="bg-purple-50"
         />

@@ -72,3 +72,30 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
+exports.getRoles = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM roles');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+exports.getAccounts = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT id, username, full_name, role_id, is_active FROM accounts'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    await db.query('DELETE FROM accounts WHERE id=?', [req.params.id]);
+    res.json({ message: 'Xóa tài khoản thành công!' });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};

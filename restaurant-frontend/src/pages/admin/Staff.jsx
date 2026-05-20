@@ -81,16 +81,7 @@ export default function Staff() {
         <div className="flex-1 bg-white rounded-xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-800">Danh sách nhân viên</h2>
-            <div className="flex gap-2 text-xs">
-              <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full">
-                {accounts.filter((a) => a.is_active).length} Đang hoạt động
-              </span>
-              <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
-                {accounts.filter((a) => !a.is_active).length} Vắng mặt
-              </span>
-            </div>
           </div>
-
           {/* Table */}
           {loading ? (
             <p className="text-center text-gray-400 py-8">Đang tải...</p>
@@ -100,7 +91,6 @@ export default function Staff() {
                 <tr className="text-xs text-gray-400 border-b border-gray-100">
                   <th className="text-left pb-3">NHÂN VIÊN</th>
                   <th className="text-left pb-3">VAI TRÒ</th>
-                  <th className="text-left pb-3">TRẠNG THÁI</th>
                   <th className="text-left pb-3">THAO TÁC</th>
                 </tr>
               </thead>
@@ -128,12 +118,6 @@ export default function Staff() {
                       </span>
                     </td>
                     <td className="py-3">
-                      <span className={`flex items-center gap-1 text-xs ${getStatusColor(acc.is_active)}`}>
-                        <span className={`w-2 h-2 rounded-full ${acc.is_active ? "bg-green-500" : "bg-gray-300"}`}></span>
-                        {acc.is_active ? "Hoạt động" : "Vắng mặt"}
-                      </span>
-                    </td>
-                    <td className="py-3">
                       <button
                         onClick={async () => {
                           if (window.confirm("Xóa tài khoản này?")) {
@@ -156,18 +140,17 @@ export default function Staff() {
         {/* Form thêm nhân viên */}
         <div className="w-72 bg-white rounded-xl border border-gray-100 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">👤</span>
             <h2 className="font-semibold text-gray-800">Thêm nhân viên mới</h2>
           </div>
 
           {error && (
             <div className="bg-red-50 text-red-600 rounded-lg px-3 py-2 mb-3 text-xs">
-              ⚠️ {error}
+               {error}
             </div>
           )}
           {success && (
             <div className="bg-green-50 text-green-600 rounded-lg px-3 py-2 mb-3 text-xs">
-              ✅ {success}
+               {success}
             </div>
           )}
 

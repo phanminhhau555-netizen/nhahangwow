@@ -1,15 +1,15 @@
 import { NavLink, useNavigate } from "react-router-dom";
 
 const menuItems = [
-  { path: "/admin/dashboard", icon: "📊", label: "Tổng quan" },
-  { path: "/admin/menu", icon: "🍽️", label: "Thực đơn" },
-  { path: "/admin/tables", icon: "🪑", label: "Sơ đồ bàn" },
-  { path: "/admin/orders", icon: "📋", label: "Đơn hàng" },
-  { path: "/admin/kitchen", icon: "👨‍🍳", label: "Nhà bếp" },
-  { path: "/admin/reports", icon: "📈", label: "Báo cáo" },
-  { path: "/admin/settings", icon: "⚙️", label: "Cài đặt" },
-  { path: "/admin/staff", icon: "👥", label: "Nhân sự" },
-  { path: "/admin/menu", icon: "🍽️", label: "Thực đơn" },
+  { path: "/admin/dashboard", label: "Tổng quan" },
+  { path: "/admin/menu",  label: "Thực đơn" },
+  { path: "/admin/tables", label: "Sơ đồ bàn" },
+  { path: "/admin/orders", label: "Đơn hàng" },
+  { path: "/admin/kitchen", label: "Nhà bếp" },
+  { path: "/admin/reports", label: "Báo cáo" },
+  { path: "/admin/settings", label: "Cài đặt" },
+  { path: "/admin/staff",  label: "Nhân sự" },
+  { path: "/admin/menu",label: "Thực đơn" },
 ];
 
 export default function Sidebar() {
@@ -28,7 +28,6 @@ export default function Sidebar() {
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm">🍽️</span>
           </div>
           <div>
             <p className="font-bold text-gray-800 text-sm">DineFlow</p>
@@ -61,7 +60,6 @@ export default function Sidebar() {
       <div className="p-3 border-t border-gray-100">
         <div className="flex items-center gap-2 px-3 py-2 mb-2">
           <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs">👤</span>
           </div>
           <div>
             <p className="text-xs font-medium text-gray-800">{user.full_name}</p>
@@ -72,7 +70,7 @@ export default function Sidebar() {
           onClick={handleLogout}
           className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
         >
-          🚪 Đăng xuất
+          Đăng xuất
         </button>
       </div>
 

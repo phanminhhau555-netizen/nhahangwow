@@ -119,7 +119,6 @@ export default function KitchenPage() {
       {/* Orders Grid */}
       {loading ? (
         <div className="text-center py-20 text-gray-400">
-          <p className="text-3xl mb-2">⏳</p>
           <p>Đang tải...</p>
         </div>
       ) : filtered.length === 0 ? (
@@ -193,7 +192,7 @@ export default function KitchenPage() {
 
                 {item.status === "hoan_thanh" && (
                   <div className="w-full py-2 text-center text-sm text-green-500 font-medium">
-                    ✅ Đã hoàn thành
+                  Đã hoàn thành
                   </div>
                 )}
               </div>
@@ -204,7 +203,7 @@ export default function KitchenPage() {
 
       {/* Auto refresh indicator */}
       <p className="text-center text-xs text-gray-300 mt-6">
-        🔄 Tự động làm mới mỗi 15 giây
+        Tự động làm mới mỗi 15 giây
       </p>
     </Layout>
   );

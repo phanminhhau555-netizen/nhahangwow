@@ -110,32 +110,24 @@ export default function Dashboard() {
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard
-          icon="💰"
           label="Doanh thu Ngày"
           value={formatMoney(stats.doanh_thu)}
-          change={12.5}
-          color="bg-green-50"
+          change={null}
         />
         <StatCard
-          icon="🛒"
           label="Tổng Đơn hàng"
           value={stats.tong_don}
-          change={5.2}
-          color="bg-blue-50"
+          change={null}
         />
         <StatCard
-          icon="🪑"
           label="Bàn đang dùng"
           value={orders.length}
-          change={-2.1}
-          color="bg-orange-50"
+          change={null}
         />
         <StatCard
-          icon="👥"
           label="Tổng khách hàng"
           value={stats.tong_khach || 0}
-          change={0.3}
-          color="bg-purple-50"
+          change={null}
         />
       </div>
 

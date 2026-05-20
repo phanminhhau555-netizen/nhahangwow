@@ -170,9 +170,6 @@ export default function MenuPage() {
             <div className="w-48 bg-green-500 rounded-xl p-4 text-white">
               <p className="text-sm opacity-80">Tổng món đang bán</p>
               <p className="text-4xl font-bold mt-1">{menu.filter(m => m.is_visible).length}</p>
-              <p className="text-xs opacity-70 mt-1">
-                ↗ +{menu.length} món trong thực đơn
-              </p>
             </div>
           </div>
 

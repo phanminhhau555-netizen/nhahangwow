@@ -78,59 +78,41 @@ export default function ReportsPage() {
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {[
-              {
-                icon: "💰",
-                label: "Tổng doanh thu",
-                value: formatMoney(revenue?.tong_doanh_thu),
-                change: "+12.5%",
-                up: true,
-                color: "bg-green-50",
-              },
-              {
-                icon: "🛒",
-                label: "Giá trị đơn TB",
-                value: formatMoney(
-                  (revenue?.tong_doanh_thu || 0) / (revenue?.tong_don || 1)
-                ),
-                change: "+5.2%",
-                up: true,
-                color: "bg-blue-50",
-              },
-              {
-                icon: "❌",
-                label: "Tỷ lệ hủy đơn",
-                value: "2.4%",
-                change: "-1.2%",
-                up: false,
-                color: "bg-red-50",
-              },
-              {
-                icon: "📋",
-                label: "Tổng đơn hàng",
-                value: revenue?.tong_don || 0,
-                change: "+8%",
-                up: true,
-                color: "bg-purple-50",
-              },
-            ].map((card, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 p-5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">{card.label}</p>
-                    <p className="text-2xl font-bold text-gray-800 mt-1">{card.value}</p>
-                    <p className={`text-xs mt-1 ${card.up ? "text-green-500" : "text-red-500"}`}>
-                      {card.up ? "↗" : "↘"} {card.change}
-                    </p>
-                  </div>
-                  <div className={`w-10 h-10 ${card.color} rounded-lg flex items-center justify-center text-xl`}>
-                    {card.icon}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-6">
+  {[
+    {
+      label: "Tổng doanh thu",
+      value: formatMoney(revenue?.tong_doanh_thu),
+    },
+    {
+      label: "Giá trị đơn TB",
+      value: formatMoney(
+        (revenue?.tong_doanh_thu || 0) / (revenue?.tong_don || 1)
+      ),
+    },
+    {
+      label: "Tổng đơn hàng",
+      value: revenue?.tong_don || 0,
+    },
+  ].map((card, i) => (
+    <div key={i} className="bg-white rounded-xl border border-gray-100 p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-gray-500">{card.label}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">
+            {card.value}
+          </p>
+        </div>
+
+        <div
+          className={`w-10 h-10 ${card.color} rounded-lg flex items-center justify-center text-xl`}
+        >
+          {card.icon}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
 
           <div className="grid grid-cols-2 gap-6 mb-6">
             {/* Doanh thu theo ngày */}
@@ -138,7 +120,6 @@ export default function ReportsPage() {
               <h2 className="font-semibold text-gray-800 mb-4">Xu hướng doanh thu</h2>
               {tab === "day" ? (
                 <div className="text-center py-8 text-gray-400">
-                  <p className="text-3xl mb-2">📅</p>
                   <p className="font-medium text-gray-700 text-lg">
                     {formatMoney(revenue?.tong_doanh_thu)}
                   </p>
@@ -287,7 +268,6 @@ export default function ReportsPage() {
                 {((inventory?.canh_bao_sap_het?.length || 0) +
                   (inventory?.canh_bao_het_hang?.length || 0)) === 0 && (
                   <div className="text-center py-8 text-gray-400">
-                    <p className="text-3xl mb-2">✅</p>
                     <p className="text-sm">Tồn kho ổn định</p>
                   </div>
                 )}

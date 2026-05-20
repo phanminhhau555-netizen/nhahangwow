@@ -79,20 +79,14 @@ export default function KitchenPage() {
             Quản lý và cập nhật trạng thái món ăn theo thời gian thực
           </p>
         </div>
-        <button
-          onClick={fetchKitchenOrders}
-          className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-        >
-          🔄 Làm mới
-        </button>
       </div>
 
       {/* Stat Tabs */}
       <div className="flex gap-3 mb-6">
         {[
-          { key: "cho", label: "Chờ nấu", icon: "⏳", color: "yellow" },
-          { key: "dang_nau", label: "Đang nấu", icon: "🔥", color: "blue" },
-          { key: "hoan_thanh", label: "Hoàn thành", icon: "✅", color: "green" },
+          { key: "cho", label: "Chờ nấu", color: "yellow" },
+          { key: "dang_nau", label: "Đang nấu", color: "blue" },
+          { key: "hoan_thanh", label: "Hoàn thành", color: "green" },
         ].map((tab) => (
           <button
             key={tab.key}

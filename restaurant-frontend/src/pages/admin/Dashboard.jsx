@@ -108,34 +108,54 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard
-          label="Doanh thu Ngày"
-          value={formatMoney(stats.doanh_thu)}
-          change={null}
-        />
-        <StatCard
-          label="Tổng Đơn hàng"
-          value={stats.tong_don}
-          change={null}
-        />
-        <StatCard
-          label="Bàn đang dùng"
-          value={orders.length}
-          change={null}
-        />
-        <StatCard
-          label="Tổng khách hàng"
-          value={stats.tong_khach || 0}
-          change={null}
-        />
-      </div>
+<div className="grid grid-cols-4 gap-4 mb-6">
+  
+  <div className="bg-white rounded-2xl shadow p-5">
+    <p className="text-gray-500 text-sm">
+      Doanh thu Ngày
+    </p>
 
+    <h2 className="text-2xl font-bold mt-1">
+      {formatMoney(stats.doanh_thu)}
+    </h2>
+  </div>
+
+  <div className="bg-white rounded-2xl shadow p-5">
+    <p className="text-gray-500 text-sm">
+      Tổng Đơn hàng
+    </p>
+
+    <h2 className="text-2xl font-bold mt-1">
+      {stats.tong_don}
+    </h2>
+  </div>
+
+  <div className="bg-white rounded-2xl shadow p-5">
+    <p className="text-gray-500 text-sm">
+      Bàn đang dùng
+    </p>
+
+    <h2 className="text-2xl font-bold mt-1">
+      {orders.length}
+    </h2>
+  </div>
+
+  <div className="bg-white rounded-2xl shadow p-5">
+    <p className="text-gray-500 text-sm">
+      Tổng khách hàng
+    </p>
+
+    <h2 className="text-2xl font-bold mt-1">
+      {stats.tong_khach || 0}
+    </h2>
+  </div>
+
+</div>
       {/* Orders Table */}
       <div className="bg-white rounded-xl border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-800">
-            Trạng thái Đơn hàng Trực tiếp
+            Trạng thái đơn hàng trực tiếp
           </h2>
           <div className="flex gap-3 text-xs">
             <span className="flex items-center gap-1">
@@ -144,14 +164,13 @@ export default function Dashboard() {
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Đang giao
+              Đã giao
             </span>
           </div>
         </div>
 
         {orders.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
-            <p className="text-3xl mb-2">📋</p>
             <p>Chưa có đơn hàng nào</p>
           </div>
         ) : (

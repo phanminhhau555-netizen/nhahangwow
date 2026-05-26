@@ -3,3 +3,5 @@ restaurant-frontend/node_modules/
 
 restaurant-backend/.env
 restaurant-frontend/.env
+.skills/
+skills-lock.json

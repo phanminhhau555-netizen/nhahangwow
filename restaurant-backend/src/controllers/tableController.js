@@ -129,3 +129,32 @@ exports.getAllReservations = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
+exports.getAllAreas = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM areas');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+exports.createArea = async (req, res) => {
+  const { name } = req.body;
+  try {
+    const [result] = await db.query(
+      'INSERT INTO areas (name) VALUES (?)', [name]
+    );
+    
+    res.status(201).json({ message: 'Thêm khu vực thành công!', id: result.insertId, name: name });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+exports.deleteArea = async (req, res) => {
+  try {
+    await db.query('DELETE FROM areas WHERE id=?', [req.params.id]);
+    res.json({ message: 'Xóa khu vực thành công!' });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};

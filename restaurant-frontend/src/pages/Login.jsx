@@ -20,7 +20,7 @@ export default function Login() {
       // Phân quyền điều hướng
       const role_id = res.data.user.role_id;
       if (role_id === 1) navigate("/admin/dashboard");
-      else if (role_id === 2) navigate("/staff/order");
+      else if (role_id === 2) navigate("/staff/tables");
       else if (role_id === 3) navigate("/kitchen");
     } catch (err) {
       setError("Sai tên đăng nhập hoặc mật khẩu!");

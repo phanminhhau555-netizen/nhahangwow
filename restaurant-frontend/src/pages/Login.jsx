@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeSlash, LockKey, User, BowlFood } from "@phosphor-icons/react";
 import API from "../services/api";
+import loginWallpaper from "../assets/dineflow-login-wallpaper.png";
+import { getDefaultPath } from "../utils/permissions";
 
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -17,12 +21,8 @@ export default function Login() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      // Phân quyền điều hướng
-      const role_id = res.data.user.role_id;
-      if (role_id === 1) navigate("/admin/dashboard");
-      else if (role_id === 2) navigate("/staff/tables");
-      else if (role_id === 3) navigate("/kitchen");
-    } catch (err) {
+      navigate(getDefaultPath(res.data.user));
+    } catch {
       setError("Sai tên đăng nhập hoặc mật khẩu!");
     } finally {
       setLoading(false);
@@ -30,75 +30,117 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="w-full max-w-md">
+    <div
+      className="relative min-h-screen overflow-hidden bg-[#18120d] bg-cover bg-center text-white"
+      style={{ backgroundImage: `url(${loginWallpaper})` }}
+    >
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,9,6,0.78)_0%,rgba(20,15,10,0.48)_44%,rgba(18,13,8,0.72)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/45 to-transparent" />
 
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-2xl mb-4">
-            <span className="text-white text-2xl">🍽️</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">DineFlow</h1>
-          <p className="text-gray-500 text-sm mt-1">Hệ thống Quản lý Nhà hàng</p>
+      <main className="relative z-10 flex min-h-screen items-center px-5 py-10 sm:px-8 lg:px-16">
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-10 lg:grid-cols-[1fr_460px]">
+          <section className="max-w-3xl pt-4 text-center lg:text-left">
+            <div className="mb-7 inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/45 bg-[#f8f1e5] text-[#2f6d3c] shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+              <BowlFood size={42} weight="duotone" />
+            </div>
+            <h1 className="text-6xl font-semibold leading-[0.95] tracking-normal text-[#fffaf0] drop-shadow-[0_8px_32px_rgba(0,0,0,0.45)] sm:text-7xl lg:text-8xl">
+              VietPho
+            </h1>
+            <p className="mt-5 text-xl font-medium text-[#fff7e8]/90 drop-shadow-[0_4px_18px_rgba(0,0,0,0.5)] sm:text-2xl">
+              Best Pho in the world
+            </p>
+          </section>
+
+          <section className="mx-auto w-full max-w-[460px] rounded-lg border border-[#e8d7bd] bg-[#fffaf0]/95 p-7 text-[#2b2a27] shadow-[0_28px_90px_rgba(0,0,0,0.42)] backdrop-blur-md sm:p-9">
+            <div className="mb-8">
+              <h2 className="text-4xl font-semibold tracking-normal text-[#25221f]">
+                Đăng nhập
+              </h2>
+            </div>
+
+            {error && (
+              <div className="mb-5 rounded-md border border-[#f0c9bd] bg-[#fff2ed] px-4 py-3 text-sm font-medium text-[#b93620]">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#38342e]">
+                  Tên đăng nhập
+                </label>
+                <div className="relative">
+                  <User
+                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#887e70]"
+                    size={20}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nhập tên đăng nhập"
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm({ ...form, username: e.target.value })
+                    }
+                    className="h-14 w-full rounded-md border border-[#d8c8ad] bg-white/70 pl-12 pr-4 text-sm text-[#25221f] outline-none transition focus:border-[#2f6d3c] focus:bg-white focus:ring-4 focus:ring-[#2f6d3c]/15"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#38342e]">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <LockKey
+                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#887e70]"
+                    size={20}
+                  />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nhập mật khẩu"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    className="h-14 w-full rounded-md border border-[#d8c8ad] bg-white/70 pl-12 pr-12 text-sm text-[#25221f] outline-none transition focus:border-[#2f6d3c] focus:bg-white focus:ring-4 focus:ring-[#2f6d3c]/15"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-[#6f665a] transition hover:bg-[#efe2cf]"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-2 h-14 w-full rounded-md bg-[#2f6d3c] text-sm font-semibold text-white shadow-[0_12px_28px_rgba(47,109,60,0.3)] transition hover:bg-[#255c32] focus:outline-none focus:ring-4 focus:ring-[#2f6d3c]/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+              </button>
+            </form>
+
+            <div className="mt-8 flex items-center gap-4 text-[#b3261e]">
+              <span className="h-px flex-1 bg-[#dfcfb7]" />
+              <span className="text-base leading-none">★</span>
+              <span className="h-px flex-1 bg-[#dfcfb7]" />
+            </div>
+
+            <p className="mt-6 text-center text-sm text-[#625b51]">
+              Bạn cần hỗ trợ?{" "}
+              <span className="font-semibold text-[#2f6d3c]">
+                Liên hệ quản trị hệ thống
+              </span>
+            </p>
+          </section>
         </div>
-
-        {/* Form */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Đăng nhập</h2>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên đăng nhập
-              </label>
-              <input
-                type="text"
-                placeholder="Nhập tên đăng nhập..."
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mật khẩu
-              </label>
-              <input
-                type="password"
-                placeholder="Nhập mật khẩu..."
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            {/* Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg py-3 text-sm transition-colors disabled:opacity-50"
-            >
-              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-            </button>
-          </form>
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-gray-400 text-xs mt-6">
-          © 2026 DineFlow. Bộ Quản lý Nhà hàng.
-        </p>
-      </div>
+      </main>
     </div>
   );
 }

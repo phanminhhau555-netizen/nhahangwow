@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { hideMenuItemsWithOutOfStockIngredients } = require('../services/menuAvailabilityService');
 
 // TÍNH TIỀN & LẬP HÓA ĐƠN
 exports.getInvoice = async (req, res) => {
@@ -181,6 +182,7 @@ exports.cancelOrder = async (req, res) => {
 
 // HÀM TỰ ĐỘNG TRỪ KHO (dùng nội bộ)
 async function deductInventory(order_id) {
+  const touchedIngredientIds = [];
   const [items] = await db.query(
     'SELECT * FROM order_items WHERE order_id=? AND status="hoan_thanh"',
     [order_id]
@@ -195,6 +197,9 @@ async function deductInventory(order_id) {
         'UPDATE ingredients SET quantity = quantity - ? WHERE id=?',
         [recipe.amount * item.quantity, recipe.ingredient_id]
       );
+      touchedIngredientIds.push(recipe.ingredient_id);
     }
   }
+
+  await hideMenuItemsWithOutOfStockIngredients(db, touchedIngredientIds);
 }

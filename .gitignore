@@ -5,3 +5,4 @@ restaurant-backend/.env
 restaurant-frontend/.env
 .skills/
 skills-lock.json
+.agents/

@@ -18,5 +18,6 @@ router.get('/logs', verifyToken, inventoryController.getInventoryLogs);
 // Công thức món ăn
 router.get('/recipes', verifyToken, inventoryController.getRecipes);
 router.post('/recipes', verifyToken, isAdmin, inventoryController.createRecipe);
+router.put('/recipes/:menuItemId', verifyToken, isAdmin, inventoryController.updateMenuItemRecipes);
 
 module.exports = router;

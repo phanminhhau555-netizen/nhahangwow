@@ -155,8 +155,10 @@ CREATE TABLE order_items (
 CREATE TABLE inventory_logs (
   id INT PRIMARY KEY AUTO_INCREMENT,
   ingredient_id INT,
+  ingredient_name VARCHAR(100),
   type ENUM('nhap', 'xuat') NOT NULL,
   quantity DECIMAL(10,2) NOT NULL,
+  unit VARCHAR(20),
   note TEXT,
   account_id INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1,20 +1,47 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import {
+  CaretDown,
+  ChartBar,
+  ChefHat,
+  GearSix,
+  ListChecks,
+  SignOut,
+  SquaresFour,
+  UserCircle,
+  UsersThree,
+  ForkKnife,
+} from "@phosphor-icons/react";
+import { useState } from "react";
+import useAuth from "../hooks/useAuth";
+import { ROLES } from "../utils/permissions";
 
 const menuItems = [
-  { path: "/admin/dashboard", label: "Tổng quan" },
-  { path: "/admin/menu",  label: "Thực đơn" },
-  { path: "/admin/tables", label: "Sơ đồ bàn" },
-  { path: "/admin/orders", label: "Đơn hàng" },
-  { path: "/admin/kitchen", label: "Nhà bếp" },
-  { path: "/admin/reports", label: "Báo cáo" },
-  { path: "/admin/settings", label: "Cài đặt" },
-  { path: "/admin/staff",  label: "Nhân sự" },
-  { path: "/admin/menu",label: "Thực đơn" },
+  { path: "/admin/dashboard", label: "Tổng quan", icon: SquaresFour },
+  { path: "/admin/menu", label: "Thực đơn", icon: ForkKnife },
+  { path: "/admin/warehouse", label: "Kho hàng", icon: ChefHat },
+  { path: "/admin/reports", label: "Báo cáo", icon: ChartBar },
+  { path: "/admin/settings", label: "Cài đặt", icon: GearSix },
+  { path: "/admin/staff", label: "Nhân sự", icon: UsersThree },
+  { path: "/admin/tables", label: "Bàn", icon: UsersThree },
+
+];
+
+const kitchenItems = [
+  { path: "/kitchen/menu", label: "Thực đơn", icon: ForkKnife },
+  { path: "/kitchen/warehouse", label: "Kho hàng", icon: ChefHat },
+];
+
+const upcomingItems = [
+  { label: "Sơ đồ bàn", icon: ListChecks },
+  { label: "Đơn hàng", icon: ListChecks },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { user, roleId, isKitchen } = useAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const displayName = user.full_name || "Admin";
+  const visibleItems = roleId === ROLES.KITCHEN ? kitchenItems : menuItems;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -23,63 +50,101 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-56 min-h-screen bg-white border-r border-gray-100 flex flex-col">
-      {/* Logo */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+    <aside className="sticky top-0 flex h-screen w-[228px] shrink-0 flex-col border-r border-slate-200/80 bg-[#f9faf4]">
+      <div className="relative border-b border-slate-200/80 p-3">
+        <button
+          type="button"
+          onClick={() => setAccountOpen((open) => !open)}
+          className="flex w-full items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-2.5 py-2.5 text-left shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          aria-expanded={accountOpen}
+          aria-haspopup="menu"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white">
+            {displayName ? (
+              <span className="text-sm font-semibold">{displayName.charAt(0).toUpperCase()}</span>
+            ) : (
+              <UserCircle size={22} weight="duotone" />
+            )}
           </div>
-          <div>
-            <p className="font-bold text-gray-800 text-sm">DineFlow</p>
-            <p className="text-xs text-gray-400">Bộ Quản lý</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-black text-slate-900">{displayName}</p>
+            <p className="text-xs font-semibold text-slate-400">
+              {isKitchen ? "Bộ phận bếp" : "Quản trị nhà hàng"}
+            </p>
           </div>
-        </div>
+          <CaretDown
+            size={16}
+            className={`text-slate-400 transition-transform ${accountOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {accountOpen && (
+          <div
+            role="menu"
+            className="absolute left-3 right-3 top-[68px] z-20 rounded-xl border border-slate-200 bg-white p-1 shadow-xl"
+          >
+            <button
+              type="button"
+              onClick={handleLogout}
+              role="menuitem"
+              className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-bold text-red-500 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+            >
+              <SignOut size={18} />
+              Đăng xuất
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 p-3 space-y-1">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? "bg-green-50 text-green-600 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`
-            }
-          >
-            <span>{item.icon}</span>
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+      <nav className="flex-1 space-y-1 p-3">
+        {visibleItems.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={() => setAccountOpen(false)}
+              className={({ isActive }) =>
+                `flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-[13px] transition-colors ${
+                  isActive
+                    ? "bg-emerald-700 font-black text-white shadow-[0_12px_24px_rgba(4,120,87,0.18)]"
+                    : "font-bold text-slate-500 hover:bg-white hover:text-slate-950"
+                }`
+              }
+            >
+              <Icon size={18} weight="duotone" />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
+
+        {!isKitchen ? (
+          <div className="pt-3">
+            <p className="px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">
+              Sắp có
+            </p>
+            <div className="mt-2 space-y-1">
+              {upcomingItems.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.label}
+                    className="flex min-h-9 items-center gap-2.5 rounded-xl px-3 text-[13px] font-bold text-slate-300"
+                    aria-disabled="true"
+                  >
+                    <Icon size={19} weight="duotone" />
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </nav>
 
-      {/* User + Logout */}
-      <div className="p-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 px-3 py-2 mb-2">
-          <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center">
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-800">{user.full_name}</p>
-            <p className="text-xs text-gray-400">Admin</p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          Đăng xuất
-        </button>
-      </div>
-
-      {/* Tạo đơn mới */}
-      <div className="p-3">
-        <button className="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
-          + Tạo Đơn Mới
-        </button>
-      </div>
-    </div>
+    </aside>
   );
 }

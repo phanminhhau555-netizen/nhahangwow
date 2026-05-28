@@ -1,4 +1,14 @@
 import { useEffect, useState } from "react";
+import {
+  Bank,
+  ChartLineUp,
+  CreditCard,
+  CurrencyCircleDollar,
+  ForkKnife,
+  Package,
+  TrendUp,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import Layout from "../../components/Layout";
 import API from "../../services/api";
 
@@ -8,274 +18,344 @@ const TABS = [
   { key: "month", label: "Tháng" },
 ];
 
+const paymentLabels = {
+  tien_mat: "Tiền mặt",
+  chuyen_khoan: "Chuyển khoản",
+  qr: "QR Pay",
+};
+
+function MetricCard({ label, value, helper, icon: Icon, tone = "emerald" }) {
+  const toneClass = {
+    emerald: "bg-emerald-50 text-emerald-700",
+    blue: "bg-blue-50 text-blue-700",
+    amber: "bg-amber-50 text-amber-700",
+  }[tone];
+
+  return (
+    <article className="admin-panel-pad admin-lift">
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-sm font-bold text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+            {value}
+          </p>
+          <p className="mt-3 text-xs font-semibold text-slate-400">{helper}</p>
+        </div>
+        <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${toneClass}`}>
+          <Icon size={23} weight="duotone" />
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="grid gap-4 xl:grid-cols-3">
+      {[1, 2, 3, 4, 5, 6].map((item) => (
+        <div key={item} className="h-40 animate-pulse rounded-2xl bg-white" />
+      ))}
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const [tab, setTab] = useState("day");
   const [revenue, setRevenue] = useState(null);
   const [topItems, setTopItems] = useState([]);
   const [inventory, setInventory] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchAll();
-  }, [tab]);
+    let mounted = true;
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const [revRes, topRes, invRes] = await Promise.all([
-        API.get(`/api/reports/revenue/${tab}`),
-        API.get("/api/reports/top-items?limit=5"),
-        API.get("/api/reports/inventory"),
-      ]);
-      setRevenue(revRes.data);
-      setTopItems(topRes.data);
-      setInventory(invRes.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchAll = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const [revRes, topRes, invRes] = await Promise.all([
+          API.get(`/api/reports/revenue/${tab}`),
+          API.get("/api/reports/top-items?limit=5"),
+          API.get("/api/reports/inventory"),
+        ]);
+
+        if (mounted) {
+          setRevenue(revRes.data);
+          setTopItems(topRes.data || []);
+          setInventory(invRes.data);
+        }
+      } catch {
+        if (mounted) setError("Không tải được dữ liệu báo cáo.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchAll();
+
+    return () => {
+      mounted = false;
+    };
+  }, [tab]);
 
   const formatMoney = (amount) =>
     new Intl.NumberFormat("vi-VN").format(amount || 0) + "đ";
 
   const getMaxSold = () =>
-    Math.max(...topItems.map((i) => i.tong_so_luong || 0), 1);
+    Math.max(...topItems.map((item) => item.tong_so_luong || 0), 1);
+
+  const stockWarningCount =
+    (inventory?.canh_bao_sap_het?.length || 0) +
+    (inventory?.canh_bao_het_hang?.length || 0);
 
   return (
     <Layout>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Báo cáo Doanh thu</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Phân tích chi tiết hiệu suất kinh doanh của nhà hàng
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? "bg-green-500 text-white"
-                  : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="admin-page">
+        <header className="admin-header">
+          <div>
+            <p className="admin-kicker">Báo cáo</p>
+            <h1 className="admin-title">Hiệu suất kinh doanh</h1>
+            <p className="admin-subtitle">
+              Theo dõi doanh thu, món bán chạy, thanh toán và cảnh báo kho trong một màn hình.
+            </p>
+          </div>
 
-      {loading ? (
-        <div className="text-center py-20 text-gray-400">
-          <p className="text-3xl mb-2">📊</p>
-          <p>Đang tải dữ liệu...</p>
-        </div>
-      ) : (
-        <>
-          {/* Stat Cards */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-6">
-  {[
-    {
-      label: "Tổng doanh thu",
-      value: formatMoney(revenue?.tong_doanh_thu),
-    },
-    {
-      label: "Giá trị đơn TB",
-      value: formatMoney(
-        (revenue?.tong_doanh_thu || 0) / (revenue?.tong_don || 1)
-      ),
-    },
-    {
-      label: "Tổng đơn hàng",
-      value: revenue?.tong_don || 0,
-    },
-  ].map((card, i) => (
-    <div key={i} className="bg-white rounded-xl border border-gray-100 p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500">{card.label}</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">
-            {card.value}
-          </p>
-        </div>
+          <div className="flex gap-2">
+            {TABS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setTab(item.key)}
+                className={`admin-tab ${tab === item.key ? "admin-tab-active" : ""}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </header>
 
-        <div
-          className={`w-10 h-10 ${card.color} rounded-lg flex items-center justify-center text-xl`}
-        >
-          {card.icon}
-        </div>
-      </div>
-    </div>
-  ))}
-</div>
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            {error}
+          </div>
+        ) : null}
 
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            {/* Doanh thu theo ngày */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Xu hướng doanh thu</h2>
-              {tab === "day" ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="font-medium text-gray-700 text-lg">
-                    {formatMoney(revenue?.tong_doanh_thu)}
-                  </p>
-                  <p className="text-sm mt-1">Tổng doanh thu hôm nay</p>
-                  <p className="text-xs mt-3 text-gray-300">
-                    {revenue?.tong_don || 0} đơn hàng đã thanh toán
-                  </p>
+        {loading ? (
+          <LoadingState />
+        ) : (
+          <>
+            <section className="grid gap-4 xl:grid-cols-3">
+              <MetricCard
+                icon={CurrencyCircleDollar}
+                label="Tổng doanh thu"
+                value={formatMoney(revenue?.tong_doanh_thu)}
+                helper="Doanh thu theo bộ lọc hiện tại"
+              />
+              <MetricCard
+                icon={TrendUp}
+                label="Giá trị đơn trung bình"
+                value={formatMoney((revenue?.tong_doanh_thu || 0) / (revenue?.tong_don || 1))}
+                helper="Tính trên đơn đã ghi nhận"
+                tone="blue"
+              />
+              <MetricCard
+                icon={ForkKnife}
+                label="Tổng đơn hàng"
+                value={revenue?.tong_don || 0}
+                helper="Số đơn trong kỳ"
+                tone="amber"
+              />
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="admin-panel-pad">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 className="admin-section-title">Xu hướng doanh thu</h2>
+                    <p className="admin-muted mt-1">So sánh theo từng ngày trong kỳ.</p>
+                  </div>
+                  <ChartLineUp size={24} className="text-emerald-700" weight="duotone" />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {(revenue?.chi_tiet || []).map((day, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <p className="text-xs text-gray-400 w-20 shrink-0">
-                        {new Date(day.ngay).toLocaleDateString("vi-VN")}
+
+                {tab === "day" ? (
+                  <div className="flex min-h-52 items-center justify-center rounded-2xl bg-slate-50">
+                    <div className="text-center">
+                      <p className="text-4xl font-black tracking-tight text-slate-950">
+                        {formatMoney(revenue?.tong_doanh_thu)}
                       </p>
-                      <div className="flex-1 bg-gray-100 rounded-full h-2">
-                        <div
-                          className="bg-green-500 h-2 rounded-full transition-all"
-                          style={{
-                            width: `${Math.min(
-                              ((day.tong_doanh_thu || 0) /
-                                Math.max(...(revenue?.chi_tiet || []).map((d) => d.tong_doanh_thu || 0), 1)) *
-                                100,
-                              100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs font-medium text-gray-700 w-24 text-right shrink-0">
-                        {formatMoney(day.tong_doanh_thu)}
+                      <p className="mt-3 text-sm font-semibold text-slate-500">
+                        {revenue?.tong_don || 0} đơn hàng đã thanh toán hôm nay
                       </p>
                     </div>
-                  ))}
-                  {(!revenue?.chi_tiet || revenue.chi_tiet.length === 0) && (
-                    <p className="text-center text-gray-400 py-8">Chưa có dữ liệu</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(revenue?.chi_tiet || []).map((day) => {
+                      const maxRevenue = Math.max(
+                        ...(revenue?.chi_tiet || []).map((item) => item.tong_doanh_thu || 0),
+                        1,
+                      );
+
+                      return (
+                        <div key={day.ngay} className="grid grid-cols-[110px_1fr_120px] items-center gap-4">
+                          <p className="text-xs font-bold text-slate-400">
+                            {new Date(day.ngay).toLocaleDateString("vi-VN")}
+                          </p>
+                          <div className="h-2 rounded-full bg-slate-100">
+                            <div
+                              className="h-2 rounded-full bg-emerald-700"
+                              style={{
+                                width: `${Math.min(((day.tong_doanh_thu || 0) / maxRevenue) * 100, 100)}%`,
+                              }}
+                            />
+                          </div>
+                          <p className="text-right text-xs font-black text-slate-700">
+                            {formatMoney(day.tong_doanh_thu)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                    {(!revenue?.chi_tiet || revenue.chi_tiet.length === 0) && (
+                      <p className="py-12 text-center text-sm font-semibold text-slate-400">
+                        Chưa có dữ liệu trong kỳ này.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-panel-pad">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 className="admin-section-title">Món bán chạy</h2>
+                    <p className="admin-muted mt-1">Top 5 món theo số lượng bán.</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
+                    Top 5
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {topItems.length === 0 ? (
+                    <p className="py-12 text-center text-sm font-semibold text-slate-400">
+                      Chưa có dữ liệu món bán.
+                    </p>
+                  ) : (
+                    topItems.map((item, index) => (
+                      <div key={`${item.mon_ten}-${index}`}>
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-sm font-black text-slate-800">{item.mon_ten}</p>
+                          <p className="text-sm font-black text-emerald-700">
+                            {item.tong_so_luong} đơn
+                          </p>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-100">
+                          <div
+                            className="h-2 rounded-full bg-emerald-700"
+                            style={{ width: `${((item.tong_so_luong || 0) / getMaxSold()) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* Món bán chạy */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-gray-800">Món bán chạy nhất</h2>
-                <span className="text-xs text-gray-400">Top 5 sản phẩm</span>
               </div>
-              <div className="space-y-4">
-                {topItems.length === 0 ? (
-                  <p className="text-center text-gray-400 py-8">Chưa có dữ liệu</p>
-                ) : (
-                  topItems.map((item, i) => (
-                    <div key={i}>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm text-gray-700 font-medium">{item.mon_ten}</p>
-                        <p className="text-sm text-green-600 font-semibold">
-                          {item.tong_so_luong} đơn
-                        </p>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1.5">
-                        <div
-                          className="bg-green-500 h-1.5 rounded-full transition-all"
-                          style={{
-                            width: `${((item.tong_so_luong || 0) / getMaxSold()) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+            </section>
 
-          <div className="grid grid-cols-2 gap-6">
-            {/* Phương thức thanh toán */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Phương thức thanh toán</h2>
-              {(revenue?.chi_tiet_thanh_toan || []).length === 0 ? (
-                <p className="text-center text-gray-400 py-8">Chưa có dữ liệu</p>
-              ) : (
+            <section className="grid gap-4 xl:grid-cols-2">
+              <div className="admin-panel-pad">
+                <h2 className="admin-section-title">Phương thức thanh toán</h2>
+                <div className="mt-5 space-y-3">
+                  {(revenue?.chi_tiet_thanh_toan || []).length === 0 ? (
+                    <p className="py-10 text-center text-sm font-semibold text-slate-400">
+                      Chưa có dữ liệu thanh toán.
+                    </p>
+                  ) : (
+                    (revenue?.chi_tiet_thanh_toan || []).map((payment) => (
+                      <div
+                        key={payment.payment_method}
+                        className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700">
+                            {payment.payment_method === "tien_mat" ? (
+                              <CurrencyCircleDollar size={22} weight="duotone" />
+                            ) : payment.payment_method === "chuyen_khoan" ? (
+                              <Bank size={22} weight="duotone" />
+                            ) : (
+                              <CreditCard size={22} weight="duotone" />
+                            )}
+                          </span>
+                          <p className="text-sm font-black text-slate-800">
+                            {paymentLabels[payment.payment_method] || "QR Code"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-black text-slate-900">
+                            {formatMoney(payment.tong_doanh_thu)}
+                          </p>
+                          <p className="text-xs font-bold text-slate-400">{payment.tong_don} đơn</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="admin-panel-pad">
+                <div className="mb-5 flex items-center justify-between">
+                  <h2 className="admin-section-title">Cảnh báo kho</h2>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-black ${
+                      stockWarningCount > 0
+                        ? "bg-red-100 text-red-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {stockWarningCount} sự kiện
+                  </span>
+                </div>
+
                 <div className="space-y-3">
-                  {(revenue?.chi_tiet_thanh_toan || []).map((pt, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">
-                          {pt.payment_method === "tien_mat" ? "💵" :
-                           pt.payment_method === "chuyen_khoan" ? "🏦" : "📱"}
-                        </span>
-                        <p className="text-sm text-gray-700">
-                          {pt.payment_method === "tien_mat" ? "Tiền mặt" :
-                           pt.payment_method === "chuyen_khoan" ? "Chuyển khoản" : "QR Code"}
+                  {(inventory?.canh_bao_het_hang || []).map((item) => (
+                    <div key={`out-${item.id || item.name}`} className="flex gap-3 rounded-xl bg-red-50 p-4">
+                      <WarningCircle size={22} className="shrink-0 text-red-600" weight="duotone" />
+                      <div>
+                        <p className="text-sm font-black text-red-800">Hết nguyên liệu</p>
+                        <p className="mt-1 text-xs font-semibold text-red-600">
+                          {item.name} đã hết hàng. Cần nhập bổ sung ngay.
                         </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-800">
-                          {formatMoney(pt.tong_doanh_thu)}
-                        </p>
-                        <p className="text-xs text-gray-400">{pt.tong_don} đơn</p>
                       </div>
                     </div>
                   ))}
+
+                  {(inventory?.canh_bao_sap_het || []).map((item) => (
+                    <div key={`low-${item.id || item.name}`} className="flex gap-3 rounded-xl bg-amber-50 p-4">
+                      <Package size={22} className="shrink-0 text-amber-700" weight="duotone" />
+                      <div>
+                        <p className="text-sm font-black text-amber-800">Sắp hết nguyên liệu</p>
+                        <p className="mt-1 text-xs font-semibold text-amber-700">
+                          {item.name} còn {item.quantity} {item.unit}. Mức tối thiểu: {item.min_quantity} {item.unit}.
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {stockWarningCount === 0 && (
+                    <div className="rounded-xl bg-slate-50 px-4 py-12 text-center">
+                      <p className="text-sm font-black text-slate-700">Tồn kho ổn định</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-400">
+                        Không có nguyên liệu cần xử lý ngay.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {/* Cảnh báo tồn kho */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-gray-800">Cảnh báo & Ghi chú</h2>
-                {((inventory?.canh_bao_sap_het?.length || 0) +
-                  (inventory?.canh_bao_het_hang?.length || 0)) > 0 && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                    {(inventory?.canh_bao_sap_het?.length || 0) +
-                      (inventory?.canh_bao_het_hang?.length || 0)} SỰ KIỆN
-                  </span>
-                )}
               </div>
-
-              <div className="space-y-3">
-                {/* Hết hàng */}
-                {(inventory?.canh_bao_het_hang || []).map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
-                    <span className="text-red-500 text-lg">🚨</span>
-                    <div>
-                      <p className="text-sm font-medium text-red-700">Hết nguyên liệu</p>
-                      <p className="text-xs text-red-500 mt-0.5">
-                        {item.name} đã hết hàng. Cần nhập bổ sung ngay!
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Sắp hết */}
-                {(inventory?.canh_bao_sap_het || []).map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
-                    <span className="text-yellow-500 text-lg">⚠️</span>
-                    <div>
-                      <p className="text-sm font-medium text-yellow-700">Sắp hết nguyên liệu</p>
-                      <p className="text-xs text-yellow-600 mt-0.5">
-                        {item.name} còn {item.quantity} {item.unit}. Mức tối thiểu: {item.min_quantity} {item.unit}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {((inventory?.canh_bao_sap_het?.length || 0) +
-                  (inventory?.canh_bao_het_hang?.length || 0)) === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    <p className="text-sm">Tồn kho ổn định</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+            </section>
+          </>
+        )}
+      </div>
     </Layout>
   );
 }

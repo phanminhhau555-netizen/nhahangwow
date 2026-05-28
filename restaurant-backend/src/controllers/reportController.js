@@ -141,11 +141,12 @@ exports.inventoryReport = async (req, res) => {
       SELECT 
         i.name as ingredient_name,
         il.type,
+        COALESCE(il.unit, i.unit) as unit,
         SUM(il.quantity) as tong_so_luong
       FROM inventory_logs il
       LEFT JOIN ingredients i ON il.ingredient_id = i.id
       WHERE MONTH(il.created_at) = MONTH(NOW())
-      GROUP BY il.ingredient_id, il.type
+      GROUP BY il.ingredient_id, il.type, COALESCE(il.unit, i.unit)
     `);
 
     res.json({

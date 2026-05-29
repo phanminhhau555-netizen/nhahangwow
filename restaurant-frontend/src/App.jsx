@@ -11,6 +11,7 @@ import TablesPage from "./pages/staff/Tables";
 import TableOrder from "./pages/staff/TableOrder";
 import AdminTablesPage from "./pages/admin/Tables";
 import SettingsPage from "./pages/admin/Settings";
+import Layout from "./components/Layout";
 import useAuth from "./hooks/useAuth";
 import { canAccess, ROLES } from "./utils/permissions";
 
@@ -36,8 +37,8 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" />} />
 
         {/* Staff */}
-        <Route path="/staff/tables" element={<PrivateRoute><TablesPage /></PrivateRoute>} />
-        <Route path="/staff/tables/:tableId/order" element={<PrivateRoute><TableOrder /></PrivateRoute>} />
+        <Route path="/staff/tables" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><TablesPage /></Layout></PrivateRoute>} />
+        <Route path="/staff/tables/:tableId/order" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><TableOrder /></Layout></PrivateRoute>} />
 
         {/* Admin */}
         <Route path="/admin" element={<PrivateRoute roles={[ROLES.ADMIN]}><Navigate to="/admin/dashboard" /></PrivateRoute>} />

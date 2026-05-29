@@ -15,7 +15,6 @@ export default function useAuth() {
     isAuthenticated: Boolean(token),
     isAdmin: roleId === ROLES.ADMIN,
     isStaff: roleId === ROLES.STAFF,
-    isKitchen: roleId === ROLES.KITCHEN,
     defaultPath: getDefaultPath(user),
   };
 }

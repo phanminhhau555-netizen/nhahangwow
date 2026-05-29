@@ -31,17 +31,33 @@ const kitchenItems = [
   { path: "/kitchen/warehouse", label: "Kho hàng", icon: ChefHat },
 ];
 
+const staffItems = [
+  { path: "/staff/tables", label: "Sơ đồ bàn", icon: ListChecks },
+];
+
+const roleMenuItems = {
+  [ROLES.ADMIN]: menuItems,
+  [ROLES.STAFF]: staffItems,
+  [ROLES.KITCHEN]: kitchenItems,
+};
+
+const roleLabels = {
+  [ROLES.ADMIN]: "Quản trị nhà hàng",
+  [ROLES.STAFF]: "Bộ phận phục vụ",
+  [ROLES.KITCHEN]: "Bộ phận bếp",
+};
+
 const upcomingItems = [
-  { label: "Sơ đồ bàn", icon: ListChecks },
   { label: "Đơn hàng", icon: ListChecks },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const { user, roleId, isKitchen } = useAuth();
+  const { user, roleId } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
   const displayName = user.full_name || "Admin";
-  const visibleItems = roleId === ROLES.KITCHEN ? kitchenItems : menuItems;
+  const visibleItems = roleMenuItems[roleId] || menuItems;
+  const roleLabel = roleLabels[roleId] || "Nhân sự nhà hàng";
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -69,7 +85,7 @@ export default function Sidebar() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-black text-slate-900">{displayName}</p>
             <p className="text-xs font-semibold text-slate-400">
-              {isKitchen ? "Bộ phận bếp" : "Quản trị nhà hàng"}
+              {roleLabel}
             </p>
           </div>
           <CaretDown
@@ -120,7 +136,7 @@ export default function Sidebar() {
           );
         })}
 
-        {!isKitchen ? (
+        {roleId === ROLES.ADMIN ? (
           <div className="pt-3">
             <p className="px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">
               Sắp có

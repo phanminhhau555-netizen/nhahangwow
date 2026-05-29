@@ -17,6 +17,7 @@ import Layout from "./components/Layout";
 import useAuth from "./hooks/useAuth";
 import StaffCustomersPage from"./pages/staff/StaffCustomersPage";
 import { canAccess, ROLES } from "./utils/permissions";
+import AdminCustomersPage from "./pages/admin/Customers";
 
 function PrivateRoute({ children, roles }) {
   const { isAuthenticated, user, defaultPath } = useAuth();
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="/admin/settings" element={<PrivateRoute roles={[ROLES.ADMIN]}><SettingsPage /></PrivateRoute>} />
         <Route path="/admin/setting" element={<PrivateRoute roles={[ROLES.ADMIN]}><SettingsPage /></PrivateRoute>} />
         <Route path="/admin/kitchen" element={<PrivateRoute roles={[ROLES.ADMIN]}><Navigate to="/admin/warehouse" /></PrivateRoute>} />
+        <Route path="/admin/customers" element={<PrivateRoute roles={[ROLES.ADMIN]}><AdminCustomersPage /></PrivateRoute>} />
 
         {/* Kitchen */}
         <Route path="/kitchen" element={<PrivateRoute roles={[ROLES.KITCHEN]}><Navigate to="/kitchen/orders" /></PrivateRoute>} />

@@ -24,7 +24,7 @@ const menuItems = [
   { path: "/admin/settings", label: "Cài đặt", icon: GearSix },
   { path: "/admin/staff", label: "Nhân sự", icon: UsersThree },
   { path: "/admin/tables", label: "Bàn", icon: UsersThree },
-
+  { path: "/admin/customers", label: "Khách hàng", icon: UsersThree },
 ];
 
 const kitchenItems = [
@@ -37,6 +37,7 @@ const staffItems = [
   { path: "/staff/tables", label: "Order món", icon: ForkKnife },
   { path: "/staff/reservations", label: "Quản lí bàn", icon: SlidersHorizontal }, 
   { path: "/staff/customers", label: "Khách hàng", icon: UsersThree }
+  
 
 ];
 
@@ -52,9 +53,7 @@ const roleLabels = {
   [ROLES.KITCHEN]: "Bộ phận bếp",
 };
 
-const upcomingItems = [
-  { label: "Đơn hàng", icon: ListChecks },
-];
+
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -141,29 +140,7 @@ export default function Sidebar() {
           );
         })}
 
-        {roleId === ROLES.ADMIN ? (
-          <div className="pt-3">
-            <p className="px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">
-              Sắp có
-            </p>
-            <div className="mt-2 space-y-1">
-              {upcomingItems.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex min-h-9 items-center gap-2.5 rounded-xl px-3 text-[13px] font-bold text-slate-300"
-                    aria-disabled="true"
-                  >
-                    <Icon size={19} weight="duotone" />
-                    <span>{item.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+        
       </nav>
 
     </aside>

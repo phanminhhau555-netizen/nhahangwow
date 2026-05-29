@@ -21,6 +21,8 @@ export default function TableOrder() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +49,11 @@ export default function TableOrder() {
     ? menu.filter((m) => m.category_id === activeCategory)
     : menu;
 
+  const totalPages = Math.max(1, Math.ceil(filteredMenu.length / ITEMS_PER_PAGE));
+  const activePage = currentPage > totalPages ? totalPages : currentPage;
+  const startIndex = (activePage - 1) * ITEMS_PER_PAGE;
+  const paginatedMenu = filteredMenu.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   const addToCart = (item) => {
     setCart((prev) => {
       const existing = prev.find((c) => c.id === item.id);
@@ -55,8 +62,16 @@ export default function TableOrder() {
           c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
         );
       }
-      return [...prev, { ...item, quantity: 1, note: "" }];
+      return [...prev, { ...item, quantity: 1, note: "", sendToKitchen: true }];
     });
+  };
+
+  const toggleSendToKitchen = (id) => {
+    setCart((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, sendToKitchen: c.sendToKitchen !== false ? false : true } : c
+      )
+    );
   };
 
   const removeFromCart = (id) => {
@@ -78,6 +93,14 @@ export default function TableOrder() {
       navigate("/staff/tables");
       return;
     }
+    
+    // Kiểm tra xem có món nào mới hoặc tăng thêm số lượng cần gửi không
+    const itemsToPost = cart.filter(item => item.quantity > (item.sentQuantity || 0));
+    if (itemsToPost.length === 0) {
+      alert("Tất cả các món và số lượng hiện tại đã được gửi trước đó rồi!");
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Tạo order mới hoặc dùng order đang có
@@ -88,21 +111,30 @@ export default function TableOrder() {
         setOrderId(currentOrderId);
       }
 
-      // Thêm từng món vào order
-      for (const item of cart) {
+      // Thêm từng món mới/số lượng tăng thêm vào order
+      for (const item of itemsToPost) {
+        const newQty = item.quantity - (item.sentQuantity || 0);
         await API.post(`/api/orders/${currentOrderId}/items`, {
           menu_item_id: item.id,
-          quantity: item.quantity,
+          quantity: newQty,
           note: item.note || "",
+          status: item.sendToKitchen !== false ? 'cho' : 'hoan_thanh'
         });
       }
 
-      // Gửi xuống bếp
-      await API.post(`/api/orders/${currentOrderId}/send`);
+      // Chỉ kích hoạt thông báo cho bếp nếu có ít nhất một món mới chọn gửi bếp
+      const hasKitchenItems = itemsToPost.some(item => item.sendToKitchen !== false);
+      if (hasKitchenItems) {
+        await API.post(`/api/orders/${currentOrderId}/send`);
+      }
 
-      alert("✅ Đã gửi order xuống bếp!");
-      setCart([]);
-      navigate("/staff/tables");
+      // Cập nhật lại số lượng đã gửi (sentQuantity) cho các món trong giỏ
+      setCart(prev => prev.map(c => ({
+        ...c,
+        sentQuantity: c.quantity
+      })));
+
+      alert("✅ Đã gửi đơn hàng thành công! Bạn có thể tiếp tục chỉnh sửa hoặc thêm món.");
     } catch (err) {
       alert("❌ Lỗi: " + (err.response?.data?.message || err.message));
     } finally {
@@ -144,7 +176,7 @@ export default function TableOrder() {
   }
 
   return (
-    <div className="admin-page flex min-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+    <div className="admin-page flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex items-center gap-3">
@@ -171,13 +203,16 @@ export default function TableOrder() {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Menu */}
-        <div className="flex-1 overflow-auto p-5">
+        <div className="flex-1 overflow-hidden flex flex-col justify-between p-5">
           {/* Category Filter */}
           <div className="flex gap-2 mb-4 flex-wrap">
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  setCurrentPage(1);
+                }}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   activeCategory === cat.id
                     ? "bg-green-500 text-white"
@@ -189,64 +224,101 @@ export default function TableOrder() {
             ))}
           </div>
 
-          {/* Menu Grid */}
-          <div className="grid grid-cols-3 gap-4">
-            {filteredMenu.map((item) => {
-              const qty = getCartQty(item.id);
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-sm transition-shadow"
-                >
-                  {/* Ảnh */}
-                  <div className="h-32 bg-gray-100 flex items-center justify-center">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-4xl">🍴</span>
-                    )}
-                  </div>
+          <div className="flex-1 overflow-auto">
+            {/* Menu Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              {paginatedMenu.map((item) => {
+                const qty = getCartQty(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-sm transition-shadow"
+                  >
+                    {/* Ảnh */}
+                    <div className="h-32 bg-gray-100 flex items-center justify-center">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-4xl">🍴</span>
+                      )}
+                    </div>
 
-                  <div className="p-3">
-                    <p className="font-medium text-gray-800 text-sm">{item.name}</p>
-                    <p className="text-green-600 font-semibold text-sm mt-0.5">
-                      {formatMoney(item.price)}
-                    </p>
+                    <div className="p-3">
+                      <p className="font-medium text-gray-800 text-sm">{item.name}</p>
+                      <p className="text-green-600 font-semibold text-sm mt-0.5">
+                        {formatMoney(item.price)}
+                      </p>
 
-                    {/* Add/Remove */}
-                    {qty === 0 ? (
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="w-full mt-2 bg-green-500 hover:bg-green-600 text-white rounded-lg py-1.5 text-sm transition-colors flex items-center justify-center gap-1"
-                      >
-                        + Thêm vào giỏ
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-between mt-2">
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-600"
-                        >
-                          -
-                        </button>
-                        <span className="font-bold text-gray-800">{qty}</span>
+                      {/* Add/Remove */}
+                      {qty === 0 ? (
                         <button
                           onClick={() => addToCart(item)}
-                          className="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center font-bold text-white"
+                          className="w-full mt-2 bg-green-500 hover:bg-green-600 text-white rounded-lg py-1.5 text-sm transition-colors flex items-center justify-center gap-1"
                         >
-                          +
+                          + Thêm vào giỏ
                         </button>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex items-center justify-between mt-2">
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-600"
+                          >
+                            -
+                          </button>
+                          <span className="font-bold text-gray-800">{qty}</span>
+                          <button
+                            onClick={() => addToCart(item)}
+                            className="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center font-bold text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-4 pt-4 border-t border-gray-100 bg-white rounded-xl p-2 shadow-sm">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={activePage === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold transition-colors"
+              >
+                ← Trước
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded-lg border text-xs font-bold transition-colors ${
+                    activePage === page
+                      ? "bg-green-500 border-green-500 text-white"
+                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={activePage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold transition-colors"
+              >
+                Sau →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Giỏ hàng */}
@@ -271,6 +343,13 @@ export default function TableOrder() {
             ) : (
               cart.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={item.sendToKitchen !== false}
+                    onChange={() => toggleSendToKitchen(item.id)}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                    title="Gửi xuống bếp khi xác nhận"
+                  />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">{item.name}</p>
                     <p className="text-xs text-green-600">{formatMoney(item.price)}</p>

@@ -35,7 +35,7 @@ exports.createOrder = async (req, res) => {
 
 // THÊM MÓN VÀO ORDER
 exports.addOrderItem = async (req, res) => {
-  const { menu_item_id, quantity, note } = req.body;
+  const { menu_item_id, quantity, note, status } = req.body;
   const order_id = req.params.id;
   try {
     // Lấy giá món ăn
@@ -49,9 +49,9 @@ exports.addOrderItem = async (req, res) => {
     // Thêm món vào order
     await db.query(
       `INSERT INTO order_items 
-        (order_id, menu_item_id, quantity, price, note) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [order_id, menu_item_id, quantity, menuItem[0].price, note || null]
+        (order_id, menu_item_id, quantity, price, note, status) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [order_id, menu_item_id, quantity, menuItem[0].price, note || null, status || 'cho']
     );
 
     // Cập nhật tổng tiền

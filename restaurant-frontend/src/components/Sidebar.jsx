@@ -54,7 +54,9 @@ const roleLabels = {
   [ROLES.KITCHEN]: "Bếp",
 };
 
-
+const upcomingItems = [
+  { label: "Đơn hàng", icon: ListChecks },
+];
 
 export default function Sidebar({ isCollapsed, onToggle }) {
   const navigate = useNavigate();

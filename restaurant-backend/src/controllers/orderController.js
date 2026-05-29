@@ -4,14 +4,26 @@ const db = require('../config/db');
 exports.createOrder = async (req, res) => {
   const { table_id, customer_id } = req.body;
   try {
+    const [table] = await db.query(
+      'SELECT status FROM tables WHERE id=?',
+      [table_id]
+    );
+
+    if (table.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy bàn!' });
+    }
+
+    if (table[0].status !== 'dang_dung') {
+      return res.status(409).json({
+        message: 'Bàn phải chuyển sang có khách trước khi order!',
+      });
+    }
+
     const [result] = await db.query(
       `INSERT INTO orders (table_id, account_id, customer_id) VALUES (?, ?, ?)`,
       [table_id, req.user.id, customer_id || null]
     );
-    // Cập nhật trạng thái bàn
-    await db.query(
-      'UPDATE tables SET status="dang_dung" WHERE id=?', [table_id]
-    );
+
     res.status(201).json({ 
       message: 'Tạo order thành công!', 
       order_id: result.insertId 

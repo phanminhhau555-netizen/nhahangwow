@@ -11,26 +11,6 @@ export default function StaffTablesPage() {
   const [activeArea, setActiveArea] = useState(null);
   const [error, setError] = useState("");
 
-  async function fetchTables() {
-    setLoading(true);
-    setError("");
-
-    try {
-      const [tablesRes, areasRes] = await Promise.all([
-        API.get("/api/tables"),
-        API.get("/api/tables/areas"),
-      ]);
-
-      setTables(tablesRes.data);
-      setAreas(areasRes.data);
-      setActiveArea((current) => current ?? areasRes.data[0]?.id ?? null);
-    } catch (err) {
-      setError(err.response?.data?.message || "Không tải được sơ đồ bàn.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
     let cancelled = false;
 
@@ -55,10 +35,6 @@ export default function StaffTablesPage() {
   }, []);
 
   const handleAreaChange = (areaId) => {
-    if (areaId === activeArea) {
-      fetchTables();
-      return;
-    }
     setActiveArea(areaId);
   };
 
@@ -72,7 +48,7 @@ export default function StaffTablesPage() {
 
       <TableMap
         title="Order món"
-        subtitle="Chọn bàn để mở trang gọi món riêng."
+        subtitle="Chọn bàn đang có khách để mở trang gọi món riêng."
         tables={tables}
         areas={areas}
         loading={loading}

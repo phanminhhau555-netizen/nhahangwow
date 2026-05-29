@@ -5,7 +5,7 @@ import {
   ChefHat,
   GearSix,
   ListChecks,
-  CalendarCheck,
+  SlidersHorizontal,
   SignOut,
   SquaresFour,
   UserCircle,
@@ -34,7 +34,7 @@ const kitchenItems = [
 
 const staffItems = [
   { path: "/staff/tables", label: "Order món", icon: ForkKnife },
-  { path: "/staff/reservations", label: "Đặt bàn", icon: CalendarCheck },
+  { path: "/staff/reservations", label: "Quản lí bàn", icon: SlidersHorizontal },
 ];
 
 const roleMenuItems = {

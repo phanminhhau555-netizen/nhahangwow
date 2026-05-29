@@ -44,6 +44,7 @@ CREATE TABLE tables (
   name VARCHAR(20) NOT NULL,
   area_id INT,
   status ENUM('trong', 'dang_dung', 'da_dat') DEFAULT 'trong',
+  reserved_at DATETIME NULL,
   FOREIGN KEY (area_id) REFERENCES areas(id)
 );
 

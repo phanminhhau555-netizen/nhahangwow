@@ -39,9 +39,14 @@ export default function TableMap({
   onDeleteTable,
   onUpdateStatus,
   onSelectTable,
+  onReceiveGuests,
+  onToggleOccupancy,
   emptyActionLabel,
   aside,
   totalLabel = "Tổng số bàn",
+  kicker,
+  showHeader = true,
+  showSummary = true,
 }) {
   const filteredTables = activeArea
     ? tables.filter((table) => table.area_id === activeArea)
@@ -55,39 +60,43 @@ export default function TableMap({
 
   return (
     <div className="admin-page">
-      <header className="admin-header items-start">
-        <div>
-          <p className="admin-kicker">{editable ? "Quản trị" : "Phục vụ"}</p>
-          <h1 className="admin-title">{title}</h1>
-          {subtitle ? <p className="admin-subtitle">{subtitle}</p> : null}
-        </div>
-
-        {editable ? (
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <button type="button" onClick={onAddArea} className="admin-tab">
-              + Khu vực
-            </button>
-            <button type="button" onClick={onAddTable} className="admin-primary-btn">
-              + Bàn
-            </button>
+      {showHeader ? (
+        <header className="admin-header items-start">
+          <div>
+            <p className="admin-kicker">{kicker || (editable ? "Quản trị" : "Phục vụ")}</p>
+            <h1 className="admin-title">{title}</h1>
+            {subtitle ? <p className="admin-subtitle">{subtitle}</p> : null}
           </div>
-        ) : (
-          <button type="button" onClick={() => onAreaChange?.(activeArea)} className="admin-tab">
-            Làm mới
-          </button>
-        )}
-      </header>
+
+          {editable ? (
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button type="button" onClick={onAddArea} className="admin-secondary-btn">
+                + Khu vực
+              </button>
+              <button type="button" onClick={onAddTable} className="admin-primary-btn">
+                + Bàn
+              </button>
+            </div>
+          ) : null}
+        </header>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_260px]">
         <section className="min-w-0 space-y-4">
-          <div className="admin-panel-pad flex flex-wrap items-center gap-3">
-            {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-              <span key={key} className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                <span className={`h-2.5 w-2.5 rounded-full ${config.color}`} />
-                {config.label} ({counts[key]})
-              </span>
-            ))}
-          </div>
+          {showSummary ? (
+            <div className="admin-panel-pad flex flex-wrap items-center gap-2.5">
+              {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                <span
+                  key={key}
+                  className={`inline-flex min-h-9 items-center gap-2 rounded-xl border px-3 text-sm font-black ${config.border} ${config.surface} ${config.text}`}
+                >
+                  <span className={`h-2.5 w-2.5 rounded-full ${config.color}`} />
+                  {config.label}
+                  <span className="rounded-lg bg-white/70 px-2 py-0.5 text-xs text-slate-700">{counts[key]}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           {areas.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -153,30 +162,32 @@ export default function TableMap({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
               {filteredTables.map((table) => {
                 const config = STATUS_CONFIG[table.status] || STATUS_CONFIG.trong;
-                const disabled = !editable && table.status === "da_dat";
-                const TableShell = onSelectTable && !editable ? "button" : "article";
+                const canOpenOrder = !editable && table.status === "dang_dung" && onSelectTable;
+                const TableShell = canOpenOrder ? "button" : "article";
 
                 return (
                   <TableShell
                     key={table.id}
                     type={TableShell === "button" ? "button" : undefined}
                     onClick={TableShell === "button" ? () => onSelectTable(table) : undefined}
-                    disabled={TableShell === "button" ? disabled : undefined}
-                    className={`admin-lift min-h-48 rounded-xl border-2 p-4 text-center ${config.border} ${config.surface} ${
+                    className={`min-h-48 rounded-xl border p-4 text-center shadow-[0_10px_28px_rgba(15,23,42,0.045)] transition-all duration-200 ${config.border} ${config.surface} ${
                       TableShell === "button"
-                        ? disabled
-                          ? "cursor-not-allowed opacity-60"
-                          : "cursor-pointer"
+                        ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(15,23,42,0.085)]"
                         : "bg-white"
                     }`}
                   >
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${config.surface} ${config.text}`}>
+                        {config.label}
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-400">
+                        {areas.find((area) => area.id === table.area_id)?.name || "Chưa có khu vực"}
+                      </span>
+                    </div>
+
                     <div className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full ${config.color}`}>
                       <span className="px-1 text-center text-sm font-black leading-tight text-white">{table.name}</span>
                     </div>
-                    <p className={`text-sm font-black ${config.text}`}>{config.label}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-400">
-                      {areas.find((area) => area.id === table.area_id)?.name || "Chưa có khu vực"}
-                    </p>
 
                     {!editable && table.status === "dang_dung" && table.total_amount > 0 ? (
                       <p className="mt-2 text-xs font-black text-slate-600">
@@ -185,7 +196,39 @@ export default function TableMap({
                     ) : null}
 
                     {!editable && table.status === "da_dat" ? (
-                      <p className="mt-2 text-xs font-bold text-orange-600">Đã đặt trước</p>
+                      <p className="mt-2 text-xs font-bold text-orange-600">Đang giữ bàn</p>
+                    ) : null}
+
+                    {!editable && ["trong", "dang_dung"].includes(table.status) && onToggleOccupancy ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggleOccupancy(table)}
+                        className={`mt-4 min-h-10 w-full rounded-xl px-3 text-xs font-black text-white transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 ${
+                          table.status === "trong"
+                            ? "bg-blue-600 hover:bg-blue-700 hover:shadow-[0_14px_26px_rgba(37,99,235,0.18)]"
+                            : "bg-slate-700 hover:bg-slate-800 hover:shadow-sm"
+                        }`}
+                      >
+                        {table.status === "trong" ? "Có khách" : "Trống"}
+                      </button>
+                    ) : null}
+
+                    {!editable && table.status === "da_dat" && onReceiveGuests ? (
+                      <button
+                        type="button"
+                        onClick={() => onReceiveGuests(table)}
+                        className="mt-4 min-h-10 w-full rounded-xl bg-blue-600 px-3 text-xs font-black text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_14px_26px_rgba(37,99,235,0.18)] active:translate-y-0"
+                      >
+                        Khách đã tới
+                      </button>
+                    ) : null}
+
+                    {!editable && table.status === "trong" && !onReceiveGuests && !onToggleOccupancy ? (
+                      <p className="mt-2 text-xs font-bold text-emerald-700">Chuyển trạng thái ở Quản lí bàn</p>
+                    ) : null}
+
+                    {!editable && table.status === "dang_dung" && onSelectTable ? (
+                      <p className="mt-2 text-xs font-bold text-blue-700">Bấm để order món</p>
                     ) : null}
 
                     {editable ? (

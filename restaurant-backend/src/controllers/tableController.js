@@ -171,7 +171,7 @@ exports.createReservation = async (req, res) => {
 exports.getAllReservations = async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT r.*, t.name as table_name 
+      SELECT r.*, t.name as table_name, t.status as table_status
       FROM reservations r
       LEFT JOIN tables t ON r.table_id = t.id
       ORDER BY r.arrive_time ASC

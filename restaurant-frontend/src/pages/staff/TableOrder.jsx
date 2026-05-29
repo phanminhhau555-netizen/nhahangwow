@@ -73,6 +73,11 @@ export default function TableOrder() {
 
   const handleConfirmOrder = async () => {
     if (cart.length === 0) return;
+    if (table?.status !== "dang_dung") {
+      alert("Bàn phải ở trạng thái có khách trước khi order.");
+      navigate("/staff/tables");
+      return;
+    }
     setSubmitting(true);
     try {
       // Tạo order mới hoặc dùng order đang có
@@ -112,6 +117,28 @@ export default function TableOrder() {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-400">
         <p>Đang tải...</p>
+      </div>
+    );
+  }
+
+  if (table?.status !== "dang_dung") {
+    return (
+      <div className="admin-page flex min-h-[calc(100vh-2rem)] items-center justify-center">
+        <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+          <p className="admin-kicker">Order món</p>
+          <h1 className="admin-title mt-1">Bàn chưa sẵn sàng order</h1>
+          <p className="admin-subtitle mx-auto mt-2">
+            Hãy chuyển bàn sang có khách trước khi gọi món.
+          </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={() => navigate("/staff/tables")} className="admin-primary-btn flex-1">
+              Về Order món
+            </button>
+            <button type="button" onClick={() => navigate("/staff/reservations")} className="admin-tab flex-1">
+              Mở Quản lí bàn
+            </button>
+          </div>
+        </section>
       </div>
     );
   }

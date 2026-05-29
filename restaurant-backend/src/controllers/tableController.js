@@ -1,5 +1,15 @@
 const db = require('../config/db');
 
+function emitTableListUpdated(req, payload = {}) {
+  req.io?.to('admin').emit('TABLE_LIST_UPDATED', payload);
+  req.io?.to('staff').emit('TABLE_LIST_UPDATED', payload);
+}
+
+function emitTableStatusUpdated(req, payload) {
+  req.io?.to('admin').emit('TABLE_STATUS_UPDATED', payload);
+  req.io?.to('staff').emit('TABLE_STATUS_UPDATED', payload);
+}
+
 // LẤY TẤT CẢ BÀN
 exports.getAllTables = async (req, res) => {
   try {
@@ -41,6 +51,7 @@ exports.createTable = async (req, res) => {
       message: 'Thêm bàn thành công!', 
       id: result.insertId 
     });
+    emitTableListUpdated(req, { table_id: result.insertId });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
@@ -122,6 +133,7 @@ exports.deleteTable = async (req, res) => {
     await connection.commit();
 
     res.json({ message: 'Xóa bàn thành công!' });
+    emitTableListUpdated(req, { table_id: Number(tableId) });
   } catch (err) {
     await connection.rollback();
     res.status(500).json({ message: 'Lỗi server', error: err.message });
@@ -138,6 +150,10 @@ exports.updateStatus = async (req, res) => {
       'UPDATE tables SET status=? WHERE id=?',
       [status, req.params.id]
     );
+    emitTableStatusUpdated(req, {
+      table_id: Number(req.params.id),
+      status,
+    });
     res.json({ message: 'Cập nhật trạng thái bàn thành công!' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
@@ -158,6 +174,11 @@ exports.createReservation = async (req, res) => {
     await db.query(
       'UPDATE tables SET status="da_dat" WHERE id=?', [table_id]
     );
+    emitTableStatusUpdated(req, {
+      table_id: Number(table_id),
+      status: 'da_dat',
+      reservation_id: result.insertId,
+    });
     res.status(201).json({ 
       message: 'Đặt bàn thành công!', 
       id: result.insertId 
@@ -197,6 +218,7 @@ exports.createArea = async (req, res) => {
     );
     
     res.status(201).json({ message: 'Thêm khu vực thành công!', id: result.insertId, name: name });
+    emitTableListUpdated(req, { area_id: result.insertId });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
@@ -206,6 +228,7 @@ exports.deleteArea = async (req, res) => {
   try {
     await db.query('DELETE FROM areas WHERE id=?', [req.params.id]);
     res.json({ message: 'Xóa khu vực thành công!' });
+    emitTableListUpdated(req, { area_id: Number(req.params.id) });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }

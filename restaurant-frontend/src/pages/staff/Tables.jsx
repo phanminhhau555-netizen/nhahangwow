@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TableMap from "../../components/TableMap";
 import API from "../../services/api";
+import { joinRealtimeRoom, subscribeRealtime } from "../../services/socketService";
 
 export default function StaffTablesPage() {
   const navigate = useNavigate();
@@ -11,8 +12,28 @@ export default function StaffTablesPage() {
   const [activeArea, setActiveArea] = useState(null);
   const [error, setError] = useState("");
 
+  const refreshTables = async () => {
+    try {
+      const [tablesRes, areasRes] = await Promise.all([
+        API.get("/api/tables"),
+        API.get("/api/tables/areas"),
+      ]);
+
+      setTables(tablesRes.data);
+      setAreas(areasRes.data);
+      setActiveArea((current) => current ?? areasRes.data[0]?.id ?? null);
+    } catch (err) {
+      setError(err.response?.data?.message || "Không tải được sơ đồ bàn.");
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
+
+    joinRealtimeRoom("staff");
+    const unsubscribeStatus = subscribeRealtime("TABLE_STATUS_UPDATED", () => refreshTables());
+    const unsubscribeList = subscribeRealtime("TABLE_LIST_UPDATED", () => refreshTables());
+    const unsubscribePayment = subscribeRealtime("PAYMENT_COMPLETED", () => refreshTables());
 
     Promise.all([API.get("/api/tables"), API.get("/api/tables/areas")])
       .then(([tablesRes, areasRes]) => {
@@ -31,6 +52,9 @@ export default function StaffTablesPage() {
 
     return () => {
       cancelled = true;
+      unsubscribeStatus();
+      unsubscribeList();
+      unsubscribePayment();
     };
   }, []);
 

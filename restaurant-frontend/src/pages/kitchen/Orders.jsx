@@ -8,6 +8,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react";
 import API from "../../services/api";
+import { joinRealtimeRoom, subscribeRealtime } from "../../services/socketService";
 
 const STATUS_COPY = {
   cho: "Đang chờ",
@@ -69,12 +70,18 @@ export default function KitchenOrdersPage() {
       }
     };
 
+    joinRealtimeRoom("kitchen");
+    const unsubscribeNewOrder = subscribeRealtime("NEW_KITCHEN_ORDER", () => refreshItems());
+    const unsubscribeItemStatus = subscribeRealtime("ITEM_STATUS_UPDATED", () => refreshItems());
+
     loadInitial();
     const refreshTimer = window.setInterval(() => refreshItems(), 15000);
     const clockTimer = window.setInterval(() => setNow(Date.now()), 1000);
 
     return () => {
       cancelled = true;
+      unsubscribeNewOrder();
+      unsubscribeItemStatus();
       window.clearInterval(refreshTimer);
       window.clearInterval(clockTimer);
     };

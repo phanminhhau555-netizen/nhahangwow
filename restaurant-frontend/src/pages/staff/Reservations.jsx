@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import TableMap from "../../components/TableMap";
 import API from "../../services/api";
+import { joinRealtimeRoom, subscribeRealtime } from "../../services/socketService";
 
 const emptyForm = {
   table_id: "",
@@ -59,6 +60,11 @@ export default function StaffReservationsPage() {
   useEffect(() => {
     let cancelled = false;
 
+    joinRealtimeRoom("staff");
+    const unsubscribeStatus = subscribeRealtime("TABLE_STATUS_UPDATED", () => refreshData());
+    const unsubscribeList = subscribeRealtime("TABLE_LIST_UPDATED", () => refreshData());
+    const unsubscribePayment = subscribeRealtime("PAYMENT_COMPLETED", () => refreshData());
+
     Promise.all([API.get("/api/tables"), API.get("/api/tables/areas"), API.get("/api/tables/reservations/all")])
       .then(([tablesRes, areasRes, reservationsRes]) => {
         if (cancelled) return;
@@ -77,6 +83,9 @@ export default function StaffReservationsPage() {
 
     return () => {
       cancelled = true;
+      unsubscribeStatus();
+      unsubscribeList();
+      unsubscribePayment();
     };
   }, []);
 

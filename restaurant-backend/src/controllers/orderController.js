@@ -76,6 +76,10 @@ exports.sendToKitchen = async (req, res) => {
       return res.status(400).json({ message: 'Order chưa có món chờ bếp!' });
     }
 
+    req.io?.to('kitchen').emit('NEW_KITCHEN_ORDER', {
+      order_id: Number(order_id),
+    });
+
     res.json({ message: 'Đã gửi order xuống bếp!' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
@@ -90,6 +94,16 @@ exports.updateItemStatus = async (req, res) => {
       'UPDATE order_items SET status=? WHERE id=?',
       [status, req.params.itemId]
     );
+
+    const payload = {
+      order_id: Number(req.params.id),
+      item_id: Number(req.params.itemId),
+      status,
+    };
+    req.io?.to('kitchen').emit('ITEM_STATUS_UPDATED', payload);
+    req.io?.to('staff').emit('ITEM_STATUS_UPDATED', payload);
+    req.io?.to('admin').emit('ITEM_STATUS_UPDATED', payload);
+
     res.json({ message: 'Cập nhật trạng thái món thành công!' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });

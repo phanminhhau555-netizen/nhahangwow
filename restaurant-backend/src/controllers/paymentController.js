@@ -145,6 +145,22 @@ exports.checkout = async (req, res) => {
     // Tự động trừ kho nguyên liệu
     await deductInventory(order_id);
 
+    const payload = {
+      order_id: Number(order_id),
+      table_id: order[0].table_id,
+      status: 'trong',
+    };
+    req.io?.to('admin').emit('PAYMENT_COMPLETED', payload);
+    req.io?.to('staff').emit('PAYMENT_COMPLETED', payload);
+    req.io?.to('admin').emit('TABLE_STATUS_UPDATED', {
+      table_id: order[0].table_id,
+      status: 'trong',
+    });
+    req.io?.to('staff').emit('TABLE_STATUS_UPDATED', {
+      table_id: order[0].table_id,
+      status: 'trong',
+    });
+
     res.json({ 
       message: 'Thanh toán thành công!',
       final_amount,
@@ -173,6 +189,15 @@ exports.cancelOrder = async (req, res) => {
       'UPDATE tables SET status="trong" WHERE id=?',
       [order[0].table_id]
     );
+
+    req.io?.to('admin').emit('TABLE_STATUS_UPDATED', {
+      table_id: order[0].table_id,
+      status: 'trong',
+    });
+    req.io?.to('staff').emit('TABLE_STATUS_UPDATED', {
+      table_id: order[0].table_id,
+      status: 'trong',
+    });
 
     res.json({ message: 'Hủy order thành công!' });
   } catch (err) {

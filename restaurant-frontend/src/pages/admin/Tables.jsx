@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "../../components/Layout";
 import TableMap from "../../components/TableMap";
 import API from "../../services/api";
+import { joinRealtimeRoom, subscribeRealtime } from "../../services/socketService";
 
 export default function AdminTablesPage() {
   const [tables, setTables] = useState([]);
@@ -37,6 +38,11 @@ export default function AdminTablesPage() {
   useEffect(() => {
     let cancelled = false;
 
+    joinRealtimeRoom("admin");
+    const unsubscribeStatus = subscribeRealtime("TABLE_STATUS_UPDATED", () => fetchData());
+    const unsubscribeList = subscribeRealtime("TABLE_LIST_UPDATED", () => fetchData());
+    const unsubscribePayment = subscribeRealtime("PAYMENT_COMPLETED", () => fetchData());
+
     Promise.all([API.get("/api/tables"), API.get("/api/tables/areas")])
       .then(([tablesRes, areasRes]) => {
         if (cancelled) return;
@@ -54,6 +60,9 @@ export default function AdminTablesPage() {
 
     return () => {
       cancelled = true;
+      unsubscribeStatus();
+      unsubscribeList();
+      unsubscribePayment();
     };
   }, []);
 

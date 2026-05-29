@@ -65,16 +65,68 @@ exports.updateTable = async (req, res) => {
 
 // XÓA BÀN
 exports.deleteTable = async (req, res) => {
+  const tableId = req.params.id;
+  const connection = await db.getConnection();
+
   try {
-    const [result] = await db.query(
-      'DELETE FROM tables WHERE id = ?', [req.params.id]
+    await connection.beginTransaction();
+
+    const [tables] = await connection.query(
+      'SELECT id, name FROM tables WHERE id = ?',
+      [tableId]
     );
-    if (result.affectedRows === 0) {
+
+    if (tables.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ message: 'Không tìm thấy bàn!' });
     }
+
+    const [activeOrders] = await connection.query(
+      `SELECT id FROM orders
+       WHERE table_id = ?
+       AND status IN ("dang_goi", "cho_thanh_toan")`,
+      [tableId]
+    );
+
+    if (activeOrders.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        message: 'Không thể xóa bàn đang có order chưa hoàn tất.',
+      });
+    }
+
+    const [activeReservations] = await connection.query(
+      `SELECT id FROM reservations
+       WHERE table_id = ?
+       AND status = "cho"`,
+      [tableId]
+    );
+
+    if (activeReservations.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        message: 'Không thể xóa bàn đang có lịch đặt bàn.',
+      });
+    }
+
+    await connection.query(
+      'UPDATE orders SET table_id = NULL WHERE table_id = ?',
+      [tableId]
+    );
+    await connection.query(
+      'UPDATE reservations SET table_id = NULL WHERE table_id = ?',
+      [tableId]
+    );
+
+    await connection.query('DELETE FROM tables WHERE id = ?', [tableId]);
+    await connection.commit();
+
     res.json({ message: 'Xóa bàn thành công!' });
   } catch (err) {
+    await connection.rollback();
     res.status(500).json({ message: 'Lỗi server', error: err.message });
+  } finally {
+    connection.release();
   }
 };
 

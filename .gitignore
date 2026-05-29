@@ -7,4 +7,4 @@ restaurant-frontend/.env
 skills-lock.json
 .agents/
 .vscode/
-restaurant-frontend/src/services/api.jsx
+.idea/

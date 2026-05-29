@@ -20,27 +20,28 @@ export default function TableOrder() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [note, setNote] = useState("");
   const [orderId, setOrderId] = useState(null);
 
   useEffect(() => {
-    fetchData();
-  }, [tableId]);
+    let cancelled = false;
 
-  const fetchData = async () => {
-    try {
-      const [tableRes, menuRes] = await Promise.all([
-        API.get(`/api/tables/${tableId}`),
-        API.get("/api/menu"),
-      ]);
-      setTable(tableRes.data);
-      setMenu(menuRes.data.filter((m) => m.is_visible));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    Promise.all([API.get(`/api/tables/${tableId}`), API.get("/api/menu")])
+      .then(([tableRes, menuRes]) => {
+        if (cancelled) return;
+        setTable(tableRes.data);
+        setMenu(menuRes.data.filter((item) => item.is_visible));
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tableId]);
 
   const filteredMenu = activeCategory
     ? menu.filter((m) => m.category_id === activeCategory)
@@ -116,19 +117,19 @@ export default function TableOrder() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="admin-page flex min-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/staff/tables")}
-            className="text-gray-400 hover:text-gray-600"
+            className="admin-tab"
           >
             ← Quay lại
           </button>
           <div>
             <h1 className="font-bold text-gray-800">{table?.name}</h1>
-            <p className="text-xs text-gray-400">Chọn món để đặt</p>
+            <p className="text-xs font-semibold text-gray-400">Trang order riêng của nhân viên</p>
           </div>
         </div>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -141,9 +142,9 @@ export default function TableOrder() {
         </span>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Menu */}
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 overflow-auto p-5">
           {/* Category Filter */}
           <div className="flex gap-2 mb-4 flex-wrap">
             {categories.map((cat) => (
@@ -222,7 +223,7 @@ export default function TableOrder() {
         </div>
 
         {/* Giỏ hàng */}
-        <div className="w-80 bg-white border-l border-gray-100 flex flex-col">
+        <div className="flex w-80 flex-col border-l border-gray-100 bg-white">
           {/* Cart Header */}
           <div className="px-5 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">

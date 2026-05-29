@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Staff from "./pages/admin/Staff";
@@ -29,6 +29,11 @@ function DefaultRedirect() {
   return <Navigate to={defaultPath} />;
 }
 
+function StaffOrderRedirect() {
+  const { tableId } = useParams();
+  return <Navigate to={`/staff/orders/${tableId}`} replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -38,7 +43,8 @@ export default function App() {
 
         {/* Staff */}
         <Route path="/staff/tables" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><TablesPage /></Layout></PrivateRoute>} />
-        <Route path="/staff/tables/:tableId/order" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><TableOrder /></Layout></PrivateRoute>} />
+        <Route path="/staff/orders/:tableId" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><TableOrder /></Layout></PrivateRoute>} />
+        <Route path="/staff/tables/:tableId/order" element={<PrivateRoute roles={[ROLES.STAFF]}><StaffOrderRedirect /></PrivateRoute>} />
 
         {/* Admin */}
         <Route path="/admin" element={<PrivateRoute roles={[ROLES.ADMIN]}><Navigate to="/admin/dashboard" /></PrivateRoute>} />

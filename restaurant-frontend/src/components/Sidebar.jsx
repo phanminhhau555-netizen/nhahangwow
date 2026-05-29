@@ -28,6 +28,7 @@ const menuItems = [
 ];
 
 const kitchenItems = [
+  { path: "/kitchen/orders", label: "Order bếp", icon: ListChecks },
   { path: "/kitchen/menu", label: "Thực đơn", icon: ForkKnife },
   { path: "/kitchen/warehouse", label: "Kho hàng", icon: ChefHat },
 ];

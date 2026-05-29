@@ -67,11 +67,15 @@ exports.addOrderItem = async (req, res) => {
 exports.sendToKitchen = async (req, res) => {
   const order_id = req.params.id;
   try {
-    await db.query(
-      `UPDATE order_items SET status="dang_nau" 
-       WHERE order_id=? AND status="cho"`,
+    const [items] = await db.query(
+      'SELECT id FROM order_items WHERE order_id=? AND status="cho" LIMIT 1',
       [order_id]
     );
+
+    if (items.length === 0) {
+      return res.status(400).json({ message: 'Order chưa có món chờ bếp!' });
+    }
+
     res.json({ message: 'Đã gửi order xuống bếp!' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
@@ -147,17 +151,31 @@ exports.getActiveOrders = async (req, res) => {
   }
 };
 
-// LẤY ORDER THEO BẾP (món đang nấu)
+// LẤY HÀNG ĐỢI BẾP THEO TỪNG MÓN
 exports.getKitchenOrders = async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT oi.*, m.name as mon_ten, t.name as table_name
+      SELECT
+        oi.id,
+        oi.order_id,
+        oi.menu_item_id,
+        oi.quantity,
+        oi.price,
+        oi.note,
+        oi.status,
+        m.name as mon_ten,
+        m.image_url,
+        o.created_at as order_created_at,
+        o.status as order_status,
+        o.table_id,
+        t.name as table_name
       FROM order_items oi
       LEFT JOIN orders o ON oi.order_id = o.id
       LEFT JOIN menu_items m ON oi.menu_item_id = m.id
       LEFT JOIN tables t ON o.table_id = t.id
       WHERE oi.status IN ("cho", "dang_nau")
-      ORDER BY oi.id ASC
+        AND o.status IN ("dang_goi", "cho_thanh_toan")
+      ORDER BY o.created_at ASC, oi.id ASC
     `);
     res.json(rows);
   } catch (err) {

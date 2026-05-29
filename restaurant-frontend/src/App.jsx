@@ -4,6 +4,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import Staff from "./pages/admin/Staff";
 import MenuPage from "./pages/admin/Menu";
 import AdminWarehousePage from "./pages/admin/Warehouse";
+import KitchenOrdersPage from "./pages/kitchen/Orders";
 import KitchenMenuPage from "./pages/kitchen/Menu";
 import KitchenWarehousePage from "./pages/kitchen/Warehouse";
 import ReportsPage from "./pages/admin/Report";
@@ -61,7 +62,8 @@ export default function App() {
         <Route path="/admin/kitchen" element={<PrivateRoute roles={[ROLES.ADMIN]}><Navigate to="/admin/warehouse" /></PrivateRoute>} />
 
         {/* Kitchen */}
-        <Route path="/kitchen" element={<PrivateRoute roles={[ROLES.KITCHEN]}><Navigate to="/kitchen/warehouse" /></PrivateRoute>} />
+        <Route path="/kitchen" element={<PrivateRoute roles={[ROLES.KITCHEN]}><Navigate to="/kitchen/orders" /></PrivateRoute>} />
+        <Route path="/kitchen/orders" element={<PrivateRoute roles={[ROLES.KITCHEN]}><Layout><KitchenOrdersPage /></Layout></PrivateRoute>} />
         <Route path="/kitchen/menu" element={<PrivateRoute roles={[ROLES.KITCHEN]}><KitchenMenuPage /></PrivateRoute>} />
         <Route path="/kitchen/warehouse" element={<PrivateRoute roles={[ROLES.KITCHEN]}><KitchenWarehousePage /></PrivateRoute>} />
 

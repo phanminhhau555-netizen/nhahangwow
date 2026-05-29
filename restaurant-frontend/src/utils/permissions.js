@@ -7,7 +7,7 @@ export const ROLES = {
 export const ROLE_HOME = {
   [ROLES.ADMIN]: "/admin/dashboard",
   [ROLES.STAFF]: "/staff/tables",
-  [ROLES.KITCHEN]: "/kitchen/warehouse",
+  [ROLES.KITCHEN]: "/kitchen/orders",
 };
 
 export const FEATURE_PERMISSIONS = {

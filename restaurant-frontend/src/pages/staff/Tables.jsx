@@ -33,9 +33,21 @@ export default function TablesPage() {
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeArea, setActiveArea] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [closeTableData, setCloseTableData] = useState(null);
+  const [closeReason, setCloseReason] = useState("");
+  const [reserveTableData, setReserveTableData] = useState(null);
+  const [reserveTime, setReserveTime] = useState("");
+  const [cardSize, setCardSize] = useState(160);
+  const [rightPanelWidth, setRightPanelWidth] = useState(240);
 
   useEffect(() => {
     fetchTables();
+    
+    // Đóng context menu khi click bất kỳ đâu trên màn hình
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
   }, []);
 
   const fetchTables = async () => {
@@ -57,6 +69,49 @@ export default function TablesPage() {
   const handleSelectTable = (table) => {
     if (table.status === "da_dat") return;
     navigate(`/staff/tables/${table.id}/order`);
+  };
+
+  const handleUpdateTableStatus = async (tableId, nextStatus, reservedAt = null) => {
+    try {
+      await API.patch(`/api/tables/${tableId}/status`, { 
+        status: nextStatus, 
+        reserved_at: reservedAt 
+      });
+      fetchTables();
+    } catch (err) {
+      alert("Lỗi đổi trạng thái bàn: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleConfirmCloseTable = async () => {
+    if (!closeReason.trim()) {
+      alert("Vui lòng nhập lý do đóng bàn");
+      return;
+    }
+    if (!window.confirm(`Xác nhận: Bạn có chắc chắn muốn đóng bàn ${closeTableData.name} với lý do đã nhập chứ?`)) {
+      return;
+    }
+    await handleUpdateTableStatus(closeTableData.id, "trong");
+    setCloseTableData(null);
+    setCloseReason("");
+  };
+
+  const handleConfirmReserveTable = async () => {
+    if (!reserveTime) {
+      alert("Vui lòng chọn thời gian đặt trước");
+      return;
+    }
+    await handleUpdateTableStatus(reserveTableData.id, "da_dat", reserveTime);
+    setReserveTableData(null);
+    setReserveTime("");
+  };
+
+  const isReservationLate = (reservedAt) => {
+    if (!reservedAt) return false;
+    const reservedTime = new Date(reservedAt).getTime();
+    const now = new Date().getTime();
+    const diffMinutes = (now - reservedTime) / (1000 * 60);
+    return diffMinutes > 30;
   };
 
   const filteredTables = activeArea
@@ -90,7 +145,7 @@ export default function TablesPage() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1480px] flex-1 gap-4 p-4">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 gap-2 p-4">
 
         {/* Main */}
         <div className="flex flex-1 flex-col gap-4">
@@ -109,26 +164,42 @@ export default function TablesPage() {
               ))}
             </div>
 
-            {/* Area Tabs */}
-            {areas.length > 0 && (
-              <div className="flex gap-2">
-                {areas.map((area) => (
+            {/* Area Tabs & Size Slider */}
+            <div className="flex items-center gap-4">
+              {areas.length > 0 && (
+                <div className="flex gap-2">
+                  {areas.map((area) => (
+                    <button
+                      key={area.id}
+                      onClick={() => setActiveArea(area.id)}
+                      className={`admin-tab ${activeArea === area.id ? "admin-tab-active" : ""}`}
+                    >
+                      {area.name}
+                    </button>
+                  ))}
                   <button
-                    key={area.id}
-                    onClick={() => setActiveArea(area.id)}
-                    className={`admin-tab ${activeArea === area.id ? "admin-tab-active" : ""}`}
+                    onClick={() => setActiveArea(null)}
+                    className={`admin-tab ${activeArea === null ? "admin-tab-active" : ""}`}
                   >
-                    {area.name}
+                    Tất cả
                   </button>
-                ))}
-                <button
-                  onClick={() => setActiveArea(null)}
-                  className={`admin-tab ${activeArea === null ? "admin-tab-active" : ""}`}
-                >
-                  Tất cả
-                </button>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+                <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">
+                  Kích cỡ ô: {cardSize}px
+                </span>
+                <input
+                  type="range"
+                  min="110"
+                  max="240"
+                  value={cardSize}
+                  onChange={(e) => setCardSize(Number(e.target.value))}
+                  className="w-20 accent-emerald-700 cursor-pointer h-1 bg-slate-200 rounded-lg appearance-none"
+                />
               </div>
-            )}
+            </div>
           </div>
 
           {/* Tables Grid */}
@@ -141,25 +212,40 @@ export default function TablesPage() {
               <p className="text-sm font-semibold">Chưa có bàn nào</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-3 xl:grid-cols-5">
+            <div 
+              className="grid gap-1.5"
+              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${cardSize}px, 1fr))` }}
+            >
               {filteredTables.map((table) => {
                 const config = STATUS_CONFIG[table.status] || STATUS_CONFIG.trong;
-                const isDisabled = table.status === "da_dat";
                 return (
                   <button
                     key={table.id}
-                    onClick={() => handleSelectTable(table)}
-                    disabled={isDisabled}
-                    className={`admin-lift flex flex-col items-center rounded-[14px] border-2 p-4 text-center transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${config.ring} ${
-                      isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-                    }`}
+                    onClick={() => {
+                      if (table.status === "trong") {
+                        handleUpdateTableStatus(table.id, "dang_dung").then(() => {
+                          navigate(`/staff/orders/${table.id}`);
+                        });
+                      } else if (table.status === "dang_dung") {
+                        navigate(`/staff/orders/${table.id}`);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        table: table
+                      });
+                    }}
+                    className={`admin-lift flex flex-col items-center rounded-[10px] border p-2.5 text-center transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${config.ring} cursor-pointer`}
                   >
                     {/* Circle */}
-                    <div className={`mb-2.5 flex h-14 w-14 items-center justify-center rounded-full ${config.circle} shadow-md`}>
-                      <span className="text-sm font-black text-white">{table.name}</span>
+                    <div className={`mb-1.5 flex h-11 w-11 items-center justify-center rounded-full ${config.circle} shadow-sm`}>
+                      <span className="text-xs font-black text-white">{table.name}</span>
                     </div>
 
-                    <p className={`text-xs font-black ${config.text}`}>
+                    <p className={`text-[10px] font-black ${config.text}`}>
                       {config.label}
                     </p>
 
@@ -169,7 +255,17 @@ export default function TablesPage() {
                       </p>
                     )}
                     {table.status === "da_dat" && (
-                      <p className="mt-1 text-[11px] font-bold text-orange-500">Đã đặt trước</p>
+                      <p className="mt-1 text-[11px] font-bold text-orange-500">
+                        Đã đặt trước
+                        {table.reserved_at && (
+                          <span className="block text-[9px] font-semibold text-orange-600">
+                            {new Date(table.reserved_at).toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </span>
+                        )}
+                      </p>
                     )}
                     {table.status === "trong" && (
                       <p className="mt-1 text-[11px] font-semibold text-slate-400">Nhấn để đặt món</p>
@@ -181,8 +277,33 @@ export default function TablesPage() {
           )}
         </div>
 
+        {/* Excel-style resizable divider */}
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startWidth = rightPanelWidth;
+            const handleMouseMove = (moveEvent) => {
+              const deltaX = startX - moveEvent.clientX;
+              const newWidth = Math.max(180, Math.min(380, startWidth + deltaX));
+              setRightPanelWidth(newWidth);
+            };
+            const handleMouseUp = () => {
+              document.removeEventListener("mousemove", handleMouseMove);
+              document.removeEventListener("mouseup", handleMouseUp);
+            };
+            document.addEventListener("mousemove", handleMouseMove);
+            document.addEventListener("mouseup", handleMouseUp);
+          }}
+          className="w-1.5 hover:w-2 bg-slate-200 hover:bg-emerald-600 active:bg-emerald-700 cursor-col-resize self-stretch transition-all duration-150 mx-1 rounded"
+          title="Kéo để chỉnh kích cỡ"
+        />
+
         {/* Right Panel */}
-        <div className="flex w-60 shrink-0 flex-col gap-4">
+        <div 
+          className="flex shrink-0 flex-col gap-4"
+          style={{ width: `${rightPanelWidth}px` }}
+        >
 
           {/* Tổng quan */}
           <div className="rounded-[14px] bg-emerald-700 p-4 text-white shadow-[0_18px_40px_rgba(4,120,87,0.18)]">
@@ -218,6 +339,183 @@ export default function TablesPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Context Menu */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 min-w-[170px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
+            {contextMenu.table.name}
+          </p>
+          
+          {contextMenu.table.status === "trong" && (
+            <>
+              <button
+                onClick={() => {
+                  handleUpdateTableStatus(contextMenu.table.id, "dang_dung").then(() => {
+                    navigate(`/staff/orders/${contextMenu.table.id}`);
+                  });
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                Mở bàn
+              </button>
+              <button
+                onClick={() => {
+                  setReserveTableData({ id: contextMenu.table.id, name: contextMenu.table.name });
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-orange-600 hover:bg-orange-50 transition-colors"
+              >
+                Đặt trước
+              </button>
+            </>
+          )}
+
+          {contextMenu.table.status === "dang_dung" && (
+            <>
+              <button
+                onClick={() => {
+                  navigate(`/staff/orders/${contextMenu.table.id}`);
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors"
+              >
+                Thanh Toán
+              </button>
+              <button
+                onClick={() => {
+                  setCloseTableData({ id: contextMenu.table.id, name: contextMenu.table.name });
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Đóng bàn
+              </button>
+            </>
+          )}
+
+          {contextMenu.table.status === "da_dat" && (
+            <>
+              <button
+                onClick={() => {
+                  handleUpdateTableStatus(contextMenu.table.id, "dang_dung").then(() => {
+                    navigate(`/staff/orders/${contextMenu.table.id}`);
+                  });
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                Mở bàn
+              </button>
+              <button
+                onClick={() => {
+                  setCloseTableData({ id: contextMenu.table.id, name: contextMenu.table.name });
+                  setContextMenu(null);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Đóng bàn
+              </button>
+              {isReservationLate(contextMenu.table.reserved_at) && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("Bàn đã trễ hẹn hơn 30 phút. Xác nhận hủy bàn đặt trước này?")) {
+                      handleUpdateTableStatus(contextMenu.table.id, "trong");
+                    }
+                    setContextMenu(null);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-red-600 hover:bg-red-50 transition-colors border-t border-slate-100"
+                >
+                  Hủy bàn trễ
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Confirmation Modal for closing table */}
+      {closeTableData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+            <h3 className="text-base font-black text-slate-900 mb-2">
+              Xác nhận đóng bàn {closeTableData.name}
+            </h3>
+            <p className="text-xs font-bold text-slate-500 mb-4">
+              Bạn có chắc chắn muốn đóng bàn này không? Vui lòng nhập ghi chú lý do đóng bàn bên dưới.
+            </p>
+            <textarea
+              className="w-full h-24 rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 mb-4 resize-none"
+              placeholder="Nhập lý do đóng bàn tại đây..."
+              value={closeReason}
+              onChange={(e) => setCloseReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCloseTableData(null);
+                  setCloseReason("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCloseTable}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-md shadow-red-500/10"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reservation Time Modal */}
+      {reserveTableData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+            <h3 className="text-base font-black text-slate-900 mb-2">
+              Đặt trước bàn {reserveTableData.name}
+            </h3>
+            <p className="text-xs font-bold text-slate-500 mb-4">
+              Vui lòng chọn thời gian khách sẽ đến nhận bàn:
+            </p>
+            <input
+              type="datetime-local"
+              className="w-full rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 mb-4"
+              value={reserveTime}
+              onChange={(e) => setReserveTime(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setReserveTableData(null);
+                  setReserveTime("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReserveTable}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/10"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

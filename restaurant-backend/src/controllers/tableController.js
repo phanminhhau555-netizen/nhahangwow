@@ -144,15 +144,55 @@ exports.deleteTable = async (req, res) => {
 
 // CẬP NHẬT TRẠNG THÁI BÀN
 exports.updateStatus = async (req, res) => {
-  const { status } = req.body;
+  const { status, reserved_at } = req.body;
   try {
-    await db.query(
-      'UPDATE tables SET status=? WHERE id=?',
-      [status, req.params.id]
-    );
+    if (status === 'da_dat') {
+      await db.query(
+        'UPDATE tables SET status=?, reserved_at=? WHERE id=?',
+        [status, reserved_at || null, req.params.id]
+      );
+    } else {
+      await db.query(
+        'UPDATE tables SET status=?, reserved_at=NULL WHERE id=?',
+        [status, req.params.id]
+      );
+
+      // Nếu đóng bàn (chuyển sang trong), kiểm tra và cập nhật trạng thái đơn hàng tương ứng
+      if (status === 'trong') {
+        const [activeOrders] = await db.query(
+          'SELECT id FROM orders WHERE table_id=? AND status IN ("dang_goi", "cho_thanh_toan")',
+          [req.params.id]
+        );
+        
+        for (const order of activeOrders) {
+          const orderId = order.id;
+          
+          // Kiểm tra xem có món nào đã được ra bàn (status = "hoan_thanh") chưa
+          const [servedItems] = await db.query(
+            'SELECT id FROM order_items WHERE order_id=? AND status="hoan_thanh" LIMIT 1',
+            [orderId]
+          );
+          
+          if (servedItems.length > 0) {
+            // Nếu đã ra món: Cập nhật thành Chờ thanh toán, chưa chọn phương thức thanh toán
+            await db.query(
+              'UPDATE orders SET status="cho_thanh_toan", paid_at=NULL, payment_method=NULL WHERE id=?',
+              [orderId]
+            );
+          } else {
+            // Nếu chưa ra món nào: Cập nhật thành Đã hủy
+            await db.query(
+              'UPDATE orders SET status="huy" WHERE id=?',
+              [orderId]
+            );
+          }
+        }
+      }
+    }
     emitTableStatusUpdated(req, {
       table_id: Number(req.params.id),
       status,
+      reserved_at: status === 'da_dat' ? reserved_at : null,
     });
     res.json({ message: 'Cập nhật trạng thái bàn thành công!' });
   } catch (err) {

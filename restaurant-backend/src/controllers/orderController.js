@@ -207,3 +207,19 @@ async function updateOrderTotal(order_id) {
     ) WHERE id = ?
   `, [order_id, order_id]);
 }
+
+// LẤY TẤT CẢ ORDER (LỊCH SỬ BÁN HÀNG)
+exports.getAllOrders = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT o.*, t.name as table_name, a.full_name as account_name
+      FROM orders o
+      LEFT JOIN tables t ON o.table_id = t.id
+      LEFT JOIN accounts a ON o.account_id = a.id
+      ORDER BY o.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};

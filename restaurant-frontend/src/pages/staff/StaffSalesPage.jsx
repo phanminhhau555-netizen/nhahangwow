@@ -1,0 +1,534 @@
+import { useEffect, useState, useMemo } from "react";
+import { ArrowClockwise, CalendarBlank, Clock, MagnifyingGlass, Receipt, User, Users } from "@phosphor-icons/react";
+import API from "../../services/api";
+
+const STATUS_CONFIG = {
+  dang_goi: { label: "Đang gọi", bg: "bg-blue-50 text-blue-700 border-blue-200" },
+  cho_thanh_toan: { label: "Chờ thanh toán", bg: "bg-orange-50 text-orange-700 border-orange-200" },
+  da_thanh_toan: { label: "Đã thanh toán", bg: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  huy: { label: "Đã hủy", bg: "bg-rose-50 text-rose-700 border-rose-200" }
+};
+
+const PAYMENT_METHODS = {
+  tien_mat: "Tiền mặt",
+  chuyen_khoan: "Chuyển khoản",
+  qr: "Mã QR"
+};
+
+export default function StaffSalesPage() {
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [checkoutMethod, setCheckoutMethod] = useState("tien_mat");
+
+  // Filters State
+  const [filterDate, setFilterDate] = useState(getTodayString()); // YYYY-MM-DD mặc định là ngày hôm nay
+  const [filterMonth, setFilterMonth] = useState(""); // YYYY-MM
+  const [filterYear, setFilterYear] = useState(""); // YYYY
+  const [startHour, setStartHour] = useState(""); // 0-23
+  const [endHour, setEndHour] = useState(""); // 0-23
+  const [filterStatus, setFilterStatus] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const res = await API.get("/api/orders");
+      setOrders(res.data || []);
+    } catch (err) {
+      console.error("Lỗi lấy danh sách hóa đơn:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOrderDetail = async (orderId) => {
+    setLoadingDetail(true);
+    try {
+      const res = await API.get(`/api/orders/${orderId}`);
+      setOrderDetail(res.data);
+    } catch (err) {
+      console.error("Lỗi lấy chi tiết hóa đơn:", err);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleViewOrder = (order) => {
+    setSelectedOrder(order);
+    fetchOrderDetail(order.id);
+  };
+
+  // Reset Filters
+  const handleResetFilters = () => {
+    setFilterDate(getTodayString());
+    setFilterMonth("");
+    setFilterYear("");
+    setStartHour("");
+    setEndHour("");
+    setFilterStatus("");
+    setSearchTerm("");
+  };
+
+  // Filtered Orders Logic
+  const filteredOrders = useMemo(() => {
+    console.log("DEBUG - total orders:", orders.length, "filterDate:", filterDate);
+    return orders.filter((order) => {
+      const orderDate = new Date(order.created_at);
+      const d = orderDate.toISOString().split("T")[0];
+      const isMatch = d === filterDate;
+      console.log(`Order #${order.id} | created_at: ${order.created_at} | converted ISO: ${d} | filterDate: ${filterDate} | Match: ${isMatch}`);
+      
+      // 1. Ngày tháng năm
+      if (filterDate) {
+        if (d !== filterDate) return false;
+      }
+      
+      if (filterMonth) {
+        const m = orderDate.toISOString().substring(0, 7); // YYYY-MM
+        if (m !== filterMonth) return false;
+      }
+
+      if (filterYear) {
+        const y = orderDate.getFullYear().toString();
+        if (y !== filterYear) return false;
+      }
+
+      // 2. Bộ lọc giờ
+      const hour = orderDate.getHours();
+      if (startHour !== "") {
+        if (hour < Number(startHour)) return false;
+      }
+      if (endHour !== "") {
+        if (hour > Number(endHour)) return false;
+      }
+
+      // 3. Trạng thái
+      if (filterStatus && order.status !== filterStatus) return false;
+
+      // 4. Tìm kiếm từ khóa (Mã đơn, Tên bàn, Người tạo)
+      if (searchTerm.trim() !== "") {
+        const term = searchTerm.toLowerCase();
+        const orderIdStr = order.id.toString();
+        const tableName = (order.table_name || "").toLowerCase();
+        const creatorName = (order.account_name || "").toLowerCase();
+        
+        if (
+          !orderIdStr.includes(term) &&
+          !tableName.includes(term) &&
+          !creatorName.includes(term)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [orders, filterDate, filterMonth, filterYear, startHour, endHour, filterStatus, searchTerm]);
+
+  // Thống kê nhanh
+  const stats = useMemo(() => {
+    const completed = filteredOrders.filter(o => o.status === "da_thanh_toan");
+    const totalRevenue = completed.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+    return {
+      totalCount: filteredOrders.length,
+      completedCount: completed.length,
+      revenue: totalRevenue
+    };
+  }, [filteredOrders]);
+
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat("vi-VN").format(amount) + "đ";
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+  return (
+    <div className="admin-soft-grid flex min-h-screen flex-col bg-[#eff1ea]">
+      {/* Header */}
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-[#fbfbf8]/95 px-5 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-4">
+          <div>
+            <p className="admin-kicker">Nhân viên</p>
+            <h1 className="text-[18px] font-black leading-tight text-slate-950">
+              Quản lý bán hàng
+            </h1>
+          </div>
+          <button onClick={fetchOrders} className="admin-secondary-btn">
+            <ArrowClockwise size={15} weight="bold" />
+            Làm mới
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-4 p-4">
+        
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="admin-panel-pad bg-[#fbfbf8]">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tổng số đơn hàng</p>
+            <p className="text-2xl font-black text-slate-800 mt-1">{stats.totalCount}</p>
+          </div>
+          <div className="admin-panel-pad bg-[#fbfbf8]">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Đơn hàng hoàn tất</p>
+            <p className="text-2xl font-black text-emerald-700 mt-1">{stats.completedCount}</p>
+          </div>
+          <div className="admin-panel-pad bg-[#fbfbf8]">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Doanh thu bộ lọc</p>
+            <p className="text-2xl font-black text-blue-700 mt-1">{formatMoney(stats.revenue)}</p>
+          </div>
+        </div>
+
+        {/* Filter Panel */}
+        <div className="admin-panel-pad bg-white flex flex-col gap-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider">Bộ lọc tìm kiếm</h2>
+            <button 
+              onClick={handleResetFilters} 
+              className="text-[11px] font-black text-emerald-700 hover:text-emerald-800"
+            >
+              Đặt lại bộ lọc
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <span className="text-[10px] font-bold text-slate-400 block mb-1">Tìm kiếm từ khóa</span>
+              <div className="relative">
+                <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Mã đơn, tên bàn, nhân viên..."
+                  className="w-full h-8 rounded-lg border border-slate-200 pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100"
+                />
+              </div>
+            </div>
+
+            {/* Date Filters */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 block mb-1">Thời gian (Ngày / Tháng / Năm)</span>
+              <div className="grid grid-cols-3 gap-1">
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => {
+                    setFilterDate(e.target.value);
+                    setFilterMonth("");
+                    setFilterYear("");
+                  }}
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-semibold text-slate-800 outline-none focus:border-emerald-500"
+                />
+                <input
+                  type="month"
+                  value={filterMonth}
+                  onChange={(e) => {
+                    setFilterMonth(e.target.value);
+                    setFilterDate("");
+                    setFilterYear("");
+                  }}
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-semibold text-slate-800 outline-none focus:border-emerald-500"
+                />
+                <select
+                  value={filterYear}
+                  onChange={(e) => {
+                    setFilterYear(e.target.value);
+                    setFilterDate("");
+                    setFilterMonth("");
+                  }}
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-semibold text-slate-800 outline-none focus:border-emerald-500"
+                >
+                  <option value="">Năm...</option>
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Hour Filter */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 block mb-1">Khung giờ đặt đơn</span>
+              <div className="flex items-center gap-1">
+                <select
+                  value={startHour}
+                  onChange={(e) => setStartHour(e.target.value)}
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-semibold text-slate-800 outline-none focus:border-emerald-500 flex-1"
+                >
+                  <option value="">Từ...</option>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{i}h</option>
+                  ))}
+                </select>
+                <span className="text-slate-400 text-[10px] font-bold">đến</span>
+                <select
+                  value={endHour}
+                  onChange={(e) => setEndHour(e.target.value)}
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-[10px] font-semibold text-slate-800 outline-none focus:border-emerald-500 flex-1"
+                >
+                  <option value="">Đến...</option>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{i}h</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 block mb-1">Trạng thái</span>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full h-8 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+              >
+                <option value="">Tất cả trạng thái</option>
+                {Object.entries(STATUS_CONFIG).map(([key, val]) => (
+                  <option key={key} value={key}>{val.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Orders Table */}
+        <div className="admin-panel overflow-hidden">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <p className="text-sm font-semibold">Đang tải danh sách hóa đơn...</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <p className="text-sm font-semibold">Không tìm thấy đơn hàng nào trùng khớp</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs font-semibold">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50 text-slate-400">
+                    <th className="p-3">Mã đơn</th>
+                    <th className="p-3">Bàn</th>
+                    <th className="p-3">Thời gian đặt</th>
+                    <th className="p-3">Tổng tiền</th>
+                    <th className="p-3">Thanh toán</th>
+                    <th className="p-3">Nhân viên tạo</th>
+                    <th className="p-3">Trạng thái</th>
+                    <th className="p-3 text-right">Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                  {filteredOrders.map((order) => {
+                    const status = STATUS_CONFIG[order.status] || { label: order.status, bg: "bg-slate-100 text-slate-700" };
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-3 text-slate-900 font-bold">#{order.id}</td>
+                        <td className="p-3 font-black text-slate-900">{order.table_name || "Mang về"}</td>
+                        <td className="p-3 text-slate-500 font-semibold">{formatDate(order.created_at)}</td>
+                        <td className="p-3 font-black text-emerald-700">{formatMoney(order.total_amount || 0)}</td>
+                        <td className="p-3 text-slate-600">{PAYMENT_METHODS[order.payment_method] || "Chưa chọn"}</td>
+                        <td className="p-3 text-slate-500">{order.account_name || "Hệ thống"}</td>
+                        <td className="p-3">
+                          <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-black ${status.bg}`}>
+                            {status.label}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleViewOrder(order)}
+                            className="text-emerald-700 hover:text-emerald-800 font-bold text-xs"
+                          >
+                            Xem
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Chi tiết đơn hàng</span>
+                <h3 className="text-base font-black text-slate-900">
+                  Đơn hàng #{selectedOrder.id} - Bàn {selectedOrder.table_name || "Mang về"}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedOrder(null);
+                  setOrderDetail(null);
+                }}
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {/* Meta Info */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-600">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block">Thời gian tạo</span>
+                  <span className="text-slate-800 font-bold">{formatDate(selectedOrder.created_at)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block">Phương thức thanh toán</span>
+                  <span className="text-slate-800 font-bold">{PAYMENT_METHODS[selectedOrder.payment_method] || "Chưa thanh toán"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block">Nhân viên phục vụ</span>
+                  <span className="text-slate-800 font-bold">{selectedOrder.account_name || "Hệ thống"}</span>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div>
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">Danh sách món ăn đã gọi</h4>
+                {loadingDetail ? (
+                  <p className="text-slate-400 text-xs font-semibold py-8 text-center">Đang tải danh sách món ăn...</p>
+                ) : !orderDetail || !orderDetail.items || orderDetail.items.length === 0 ? (
+                  <p className="text-slate-400 text-xs font-semibold py-8 text-center">Không có món ăn nào trong đơn hàng này</p>
+                ) : (
+                  <div className="rounded-xl border border-slate-100 overflow-hidden">
+                    <table className="w-full border-collapse text-left text-xs font-semibold">
+                      <thead>
+                        <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400">
+                          <th className="p-2">Tên món</th>
+                          <th className="p-2 text-center">Số lượng</th>
+                          <th className="p-2 text-right">Đơn giá</th>
+                          <th className="p-2 text-right">Thành tiền</th>
+                          <th className="p-2">Trạng thái bếp</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                        {orderDetail.items.map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-50/50">
+                            <td className="p-2">
+                              <span className="font-bold text-slate-900 block">{item.mon_ten}</span>
+                              {item.note && <span className="text-[10px] font-medium text-amber-600 block">Ghi chú: {item.note}</span>}
+                            </td>
+                            <td className="p-2 text-center font-bold text-slate-900">{item.quantity}</td>
+                            <td className="p-2 text-right text-slate-500">{formatMoney(item.price)}</td>
+                            <td className="p-2 text-right font-bold text-slate-900">{formatMoney(item.price * item.quantity)}</td>
+                            <td className="p-2">
+                              <span className={`inline-block rounded px-2 py-0.5 text-[9px] font-bold ${
+                                item.status === "hoan_thanh" ? "bg-emerald-50 text-emerald-700" :
+                                item.status === "dang_nau" ? "bg-blue-50 text-blue-700" :
+                                item.status === "huy" ? "bg-rose-50 text-rose-700" :
+                                "bg-amber-50 text-amber-700"
+                              }`}>
+                                {item.status === "hoan_thanh" ? "Đã ra món" :
+                                 item.status === "dang_nau" ? "Đang làm" :
+                                 item.status === "huy" ? "Đã hủy" : "Đang chờ bếp"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              
+              {selectedOrder.status === "cho_thanh_toan" && (
+                <div className="rounded-xl border border-orange-100 bg-orange-50/20 p-4 space-y-3 mt-4">
+                  <span className="text-xs font-black text-orange-800 uppercase tracking-wider block">
+                    Xử lý thanh toán hóa đơn
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(PAYMENT_METHODS).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setCheckoutMethod(key)}
+                        type="button"
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
+                          checkoutMethod === key
+                            ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm"
+                            : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await API.post(`/api/payment/${selectedOrder.id}/checkout`, {
+                            payment_method: checkoutMethod
+                          });
+                          alert("Thanh toán hóa đơn thành công!");
+                          setSelectedOrder(null);
+                          setOrderDetail(null);
+                          fetchOrders();
+                        } catch (err) {
+                          alert("Lỗi thanh toán: " + (err.response?.data?.message || err.message));
+                        }
+                      }}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors shadow-md shadow-emerald-700/10"
+                    >
+                      Xác nhận thanh toán
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Receipt size={16} className="text-slate-400" />
+                <span className="text-xs font-bold text-slate-500">Tổng thanh toán:</span>
+                <span className="text-base font-black text-emerald-700">{formatMoney(selectedOrder.total_amount || 0)}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedOrder(null);
+                  setOrderDetail(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors shadow-md shadow-emerald-700/10"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

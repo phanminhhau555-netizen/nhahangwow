@@ -16,6 +16,7 @@ import SettingsPage from "./pages/admin/Settings";
 import Layout from "./components/Layout";
 import useAuth from "./hooks/useAuth";
 import StaffCustomersPage from"./pages/staff/StaffCustomersPage";
+import StaffSalesPage from "./pages/staff/StaffSalesPage";
 import { canAccess, ROLES } from "./utils/permissions";
 import AdminCustomersPage from "./pages/admin/Customers";
 
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/staff/orders/:tableId" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><TableOrder /></Layout></PrivateRoute>} />
         <Route path="/staff/tables/:tableId/order" element={<PrivateRoute roles={[ROLES.STAFF]}><StaffOrderRedirect /></PrivateRoute>} />
         <Route path="/staff/customers" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><StaffCustomersPage /></Layout></PrivateRoute>} />
+        <Route path="/staff/sales" element={<PrivateRoute roles={[ROLES.STAFF]}><Layout><StaffSalesPage /></Layout></PrivateRoute>} />
 
 
         {/* Admin */}

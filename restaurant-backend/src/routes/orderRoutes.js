@@ -3,6 +3,7 @@ const router = express.Router();
 const orderController = require('../controllers/orderController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
+router.get('/', verifyToken, orderController.getAllOrders);
 router.get('/active', verifyToken, orderController.getActiveOrders);
 router.get('/kitchen', verifyToken, orderController.getKitchenOrders);
 router.get('/:id', verifyToken, orderController.getOrderById);

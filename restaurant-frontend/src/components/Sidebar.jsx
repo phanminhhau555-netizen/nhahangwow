@@ -35,7 +35,9 @@ const kitchenItems = [
 
 const staffItems = [
   { path: "/staff/tables", label: "Order món", icon: ForkKnife },
-  { path: "/staff/reservations", label: "Quản lí bàn", icon: SlidersHorizontal },
+  { path: "/staff/reservations", label: "Quản lí bàn", icon: SlidersHorizontal }, 
+  { path: "/staff/customers", label: "Khách hàng", icon: UsersThree }
+
 ];
 
 const roleMenuItems = {

@@ -190,7 +190,7 @@ export default function TableOrder() {
   const statusConfig = STATUS_CONFIG[table?.status] || STATUS_CONFIG.trong;
 
   return (
-    <div className="admin-page flex min-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+    <div className="admin-page flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-[#fbfbf8]/95 px-5 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-4">
@@ -236,82 +236,122 @@ export default function TableOrder() {
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 gap-4 overflow-hidden p-4">
 
         {/* Menu */}
-        <div className="flex-1 overflow-auto p-5">
-          {/* Category Filter */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  activeCategory === cat.id
-                    ? "bg-green-500 text-white"
-                    : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Menu Grid */}
-          <div className="grid grid-cols-3 gap-4">
-            {filteredMenu.map((item) => {
-              const qty = getCartQty(item.id);
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-sm transition-shadow"
+        <div className="flex-1 overflow-hidden flex flex-col justify-between p-5 bg-white rounded-2xl border border-slate-200/60 shadow-sm">
+          <div className="flex-1 overflow-auto">
+            {/* Category Filter */}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {allCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                    activeCategory === cat.id
+                      ? "bg-emerald-700 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
                 >
-                  {/* Ảnh */}
-                  <div className="h-32 bg-gray-100 flex items-center justify-center">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-4xl">🍴</span>
-                    )}
-                  </div>
+                  {cat.label}
+                </button>
+              ))}
+            </div>
 
-                  <div className="p-3">
-                    <p className="font-medium text-gray-800 text-sm">{item.name}</p>
-                    <p className="text-green-600 font-semibold text-sm mt-0.5">
-                      {formatMoney(item.price)}
-                    </p>
+            {/* Menu Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              {paginatedMenu.map((item) => {
+                const qty = getCartQty(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-sm transition-shadow"
+                  >
+                    {/* Ảnh */}
+                    <div className="h-32 bg-gray-100 flex items-center justify-center">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-4xl">🍴</span>
+                      )}
+                    </div>
 
-                    {/* Add/Remove */}
-                    {qty === 0 ? (
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="w-full mt-2 bg-green-500 hover:bg-green-600 text-white rounded-lg py-1.5 text-sm transition-colors flex items-center justify-center gap-1"
-                      >
-                        + Thêm vào giỏ
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-between mt-2">
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-600"
-                        >
-                          -
-                        </button>
-                        <span className="font-bold text-gray-800">{qty}</span>
+                    <div className="p-3">
+                      <p className="font-medium text-gray-800 text-sm">{item.name}</p>
+                      <p className="text-green-600 font-semibold text-sm mt-0.5">
+                        {formatMoney(item.price)}
+                      </p>
+
+                      {/* Add/Remove */}
+                      {qty === 0 ? (
                         <button
                           onClick={() => addToCart(item)}
-                          className="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center font-bold text-white"
+                          className="w-full mt-2 bg-green-500 hover:bg-green-600 text-white rounded-lg py-1.5 text-sm transition-colors flex items-center justify-center gap-1"
                         >
-                          +
+                          + Thêm vào giỏ
                         </button>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex items-center justify-between mt-2">
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-600"
+                          >
+                            -
+                          </button>
+                          <span className="font-bold text-gray-800">{qty}</span>
+                          <button
+                            onClick={() => addToCart(item)}
+                            className="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center font-bold text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-4 pt-4 border-t border-gray-100 bg-white rounded-xl p-2 shadow-sm">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={activePage === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold transition-colors"
+              >
+                ← Trước
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded-lg border text-xs font-bold transition-colors ${
+                    activePage === page
+                      ? "bg-emerald-700 border-emerald-700 text-white"
+                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={activePage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold transition-colors"
+              >
+                Sau →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Giỏ hàng */}

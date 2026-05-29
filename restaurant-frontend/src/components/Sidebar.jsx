@@ -25,7 +25,7 @@ const menuItems = [
   { path: "/admin/settings", label: "Cài đặt", icon: GearSix },
   { path: "/admin/staff", label: "Nhân sự", icon: UsersThree },
   { path: "/admin/tables", label: "Bàn", icon: UsersThree },
-
+  { path: "/admin/customers", label: "Khách hàng", icon: UsersThree },
 ];
 
 const kitchenItems = [
@@ -36,7 +36,10 @@ const kitchenItems = [
 
 const staffItems = [
   { path: "/staff/tables", label: "Order món", icon: ForkKnife },
-  { path: "/staff/reservations", label: "Quản lí bàn", icon: SlidersHorizontal },
+  { path: "/staff/reservations", label: "Quản lí bàn", icon: SlidersHorizontal }, 
+  { path: "/staff/customers", label: "Khách hàng", icon: UsersThree }
+  
+
 ];
 
 const roleMenuItems = {
@@ -51,9 +54,7 @@ const roleLabels = {
   [ROLES.KITCHEN]: "Bếp",
 };
 
-const upcomingItems = [
-  { label: "Đơn hàng", icon: ListChecks },
-];
+
 
 export default function Sidebar({ isCollapsed, onToggle }) {
   const navigate = useNavigate();
@@ -159,7 +160,7 @@ export default function Sidebar({ isCollapsed, onToggle }) {
           );
         })}
 
-        {roleId === ROLES.ADMIN && !isCollapsed ? (
+        {roleId === ROLES.ADMIN ? (
           <div className="pt-3">
             <p className="px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">
               Sắp có

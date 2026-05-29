@@ -5,6 +5,9 @@ const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
 
 router.get('/areas', verifyToken, tableController.getAllAreas);
 router.post('/areas', verifyToken, isAdmin, tableController.createArea);
+// Đặt bàn
+router.get('/reservations/all', verifyToken, tableController.getAllReservations);
+router.post('/reservations', verifyToken, tableController.createReservation);
 router.get('/', verifyToken, tableController.getAllTables);
 router.post('/', verifyToken, isAdmin, tableController.createTable);
 
@@ -15,8 +18,5 @@ router.delete('/:id', verifyToken, isAdmin, tableController.deleteTable);
 router.patch('/:id/status', verifyToken, tableController.updateStatus);
 
 router.delete('/areas/:id', verifyToken, isAdmin, tableController.deleteArea);
-// Đặt bàn
-router.get('/reservations/all', verifyToken, tableController.getAllReservations);
-router.post('/reservations', verifyToken, tableController.createReservation);
 
 module.exports = router;

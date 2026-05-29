@@ -71,7 +71,7 @@ export default function StaffTablesPage() {
       ) : null}
 
       <TableMap
-        title="Sơ đồ bàn"
+        title="Order món"
         subtitle="Chọn bàn để mở trang gọi món riêng."
         tables={tables}
         areas={areas}
@@ -80,54 +80,7 @@ export default function StaffTablesPage() {
         onAreaChange={handleAreaChange}
         onSelectTable={(table) => navigate(`/staff/orders/${table.id}`)}
         totalLabel="Tổng số bàn"
-        aside={<ReservationList />}
       />
-    </div>
-  );
-}
-
-function ReservationList() {
-  const [reservations, setReservations] = useState([]);
-
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const res = await API.get("/api/tables/reservations/all");
-        setReservations(res.data.slice(0, 5));
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchReservations();
-  }, []);
-
-  return (
-    <div className="admin-panel-pad">
-      <p className="admin-section-title mb-3">Đặt bàn sắp tới</p>
-      {reservations.length === 0 ? (
-        <p className="py-4 text-center text-xs font-bold text-slate-400">Chưa có đặt bàn</p>
-      ) : (
-        <div className="space-y-3">
-          {reservations.map((reservation) => (
-            <div key={reservation.id} className="flex items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700">
-                {reservation.num_guests}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-black text-slate-800">{reservation.customer_name}</p>
-                <p className="text-xs font-semibold text-slate-400">
-                  {new Date(reservation.arrive_time).toLocaleTimeString("vi-VN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
-                  · {reservation.table_name}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

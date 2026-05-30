@@ -168,3 +168,17 @@ CREATE TABLE inventory_logs (
 );
 INSERT INTO roles (name) VALUES ('admin'), ('ban_hang'), ('bep');
 INSERT INTO categories (name) VALUES ('Món chính'), ('Món phụ'), ('Đồ uống'), ('Tráng miệng');
+-- Thêm vô cho khách hàng
+CREATE TABLE IF NOT EXISTS points_transactions (
+  id           INT PRIMARY KEY AUTO_INCREMENT,
+  customer_id  INT NOT NULL,
+  order_id     INT,
+  type         ENUM('cong', 'tru') NOT NULL,
+  points       INT NOT NULL,
+  note         VARCHAR(255),
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (customer_id) REFERENCES customers(id),
+  FOREIGN KEY (order_id)    REFERENCES orders(id)
+);
+CREATE INDEX idx_pt_customer ON points_transactions(customer_id);
+

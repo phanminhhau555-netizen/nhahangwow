@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from "react";
+
 const STATUS_CONFIG = {
   trong: {
     label: "Bàn trống",
@@ -70,9 +72,11 @@ export default function TableMap({
 
           {editable ? (
             <div className="flex shrink-0 flex-wrap gap-2">
-              <button type="button" onClick={onAddArea} className="admin-secondary-btn">
-                + Khu vực
-              </button>
+              <AreaMenuButton
+                onAddArea={onAddArea}
+                onDeleteArea={() => onDeleteArea?.(activeArea)}
+                hasActiveArea={!!activeArea}
+              />
               <button type="button" onClick={onAddTable} className="admin-primary-btn">
                 + Bàn
               </button>
@@ -102,33 +106,19 @@ export default function TableMap({
             <div className="flex flex-wrap gap-2">
               {areas.map((area) => {
                 const isActive = activeArea === area.id;
-
                 return (
-                  <div key={area.id} className="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <button
-                      type="button"
-                      onClick={() => onAreaChange?.(area.id)}
-                      className={`min-h-10 px-4 text-sm font-black transition-colors ${
-                        isActive ? "bg-emerald-700 text-white" : "text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {area.name}
-                    </button>
-                    {editable ? (
-                      <button
-                        type="button"
-                        onClick={() => onDeleteArea?.(area.id)}
-                        className={`min-h-10 border-l px-3 text-sm font-black transition-colors ${
-                          isActive
-                            ? "border-emerald-600 bg-emerald-800 text-white"
-                            : "border-slate-200 text-red-400 hover:bg-red-50 hover:text-red-600"
-                        }`}
-                        aria-label={`Xóa ${area.name}`}
-                      >
-                        x
-                      </button>
-                    ) : null}
-                  </div>
+                  <button
+                    key={area.id}
+                    type="button"
+                    onClick={() => onAreaChange?.(area.id)}
+                    className={`min-h-10 rounded-xl border px-4 text-sm font-black transition-colors ${
+                      isActive
+                        ? "border-emerald-700 bg-emerald-700 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {area.name}
+                  </button>
                 );
               })}
               <button
@@ -270,7 +260,6 @@ export default function TableMap({
             <div className="space-y-2">
               {areas.map((area) => {
                 const areaTables = tables.filter((table) => table.area_id === area.id);
-
                 return (
                   <div key={area.id} className="flex items-center justify-between gap-3">
                     <p className="truncate text-xs font-bold text-slate-600">{area.name}</p>
@@ -284,6 +273,50 @@ export default function TableMap({
           {aside}
         </aside>
       </div>
+    </div>
+  );
+}
+
+function AreaMenuButton({ onAddArea, onDeleteArea, hasActiveArea }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="admin-secondary-btn"
+      >
+        Khu vực ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 top-11 z-20 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onAddArea?.(); }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          >
+            + Thêm khu vực
+          </button>
+          <button
+            type="button"
+            disabled={!hasActiveArea}
+            onClick={() => { setOpen(false); onDeleteArea?.(); }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Xóa khu vực này
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -52,9 +52,7 @@ const roleLabels = {
   [ROLES.KITCHEN]: "Bếp",
 };
 
-const upcomingItems = [
-  { label: "Đơn hàng", icon: ListChecks },
-];
+
 
 export default function Sidebar({ isCollapsed, onToggle }) {
   const navigate = useNavigate();
@@ -160,29 +158,6 @@ export default function Sidebar({ isCollapsed, onToggle }) {
           );
         })}
 
-        {roleId === ROLES.ADMIN ? (
-          <div className="pt-3">
-            <p className="px-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">
-              Sắp có
-            </p>
-            <div className="mt-2 space-y-1">
-              {upcomingItems.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex min-h-9 items-center gap-2.5 rounded-xl px-3 text-[13px] font-bold text-slate-300"
-                    aria-disabled="true"
-                  >
-                    <Icon size={19} weight="duotone" />
-                    <span>{item.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
       </nav>
     </aside>
   );

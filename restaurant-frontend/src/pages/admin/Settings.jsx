@@ -21,6 +21,9 @@ export default function SettingsPage() {
   const [invoiceTitle, setInvoiceTitle] = useState("RESTO DELUXE");
   const [contactInfo, setContactInfo]   = useState("123 Đường Ẩm Thực, Quận 1, TP. HCM - Hotline: 0123 456 789");
   const [footerText, setFooterText]     = useState("Cảm ơn quý khách và hẹn gặp lại!");
+  const [bankId, setBankId]             = useState("VCB");
+  const [accountNo, setAccountNo]       = useState("1049144528");
+  const [accountName, setAccountName]   = useState("PHAM TRUONG PHAT");
   const [saveState, setSaveState]       = useState("idle");
   const [enabledMethods, setEnabledMethods] = useState(["tien_mat", "chuyen_khoan"]);
 
@@ -36,6 +39,9 @@ export default function SettingsPage() {
             const tpl = JSON.parse(d.invoice_template);
             if (tpl.footer)  setFooterText(tpl.footer);
             if (tpl.contact) setContactInfo(tpl.contact);
+            if (tpl.bank_id) setBankId(tpl.bank_id);
+            if (tpl.account_no) setAccountNo(tpl.account_no);
+            if (tpl.account_name) setAccountName(tpl.account_name);
           } catch {}
         }
       })
@@ -67,6 +73,9 @@ export default function SettingsPage() {
         payment_methods: enabledMethods.join(","),
         footer_text:     footerText,
         contact_info:    contactInfo,
+        bank_id:         bankId,
+        account_no:      accountNo,
+        account_name:    accountName,
       });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 1800);
@@ -99,30 +108,80 @@ export default function SettingsPage() {
         )}
 
         <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
-          {/* Thuế */}
-          <section className="admin-panel-pad">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <Percent size={23} weight="bold" />
-              </span>
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Cấu hình Thuế</h2>
-                <p className="text-xs font-medium text-gray-400">Áp dụng cho hóa đơn</p>
+          <div className="space-y-4">
+            {/* Thuế */}
+            <section className="admin-panel-pad">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <Percent size={23} weight="bold" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Cấu hình Thuế</h2>
+                  <p className="text-xs font-medium text-gray-400">Áp dụng cho hóa đơn</p>
+                </div>
               </div>
-            </div>
-            <label className="block text-xs font-semibold text-gray-500">
-              Thuế VAT hiện tại (%)
-              <div className="mt-2 flex h-12 overflow-hidden rounded-xl bg-gray-50 ring-1 ring-gray-100 focus-within:ring-2 focus-within:ring-emerald-500">
-                <input
-                  type="number" min="0" max="100"
-                  value={vatRate}
-                  onChange={(e) => setVatRate(e.target.value)}
-                  className="min-w-0 flex-1 bg-transparent px-4 text-sm font-bold text-gray-800 outline-none"
-                />
-                <span className="flex items-center px-4 text-sm font-bold text-gray-400">%</span>
+              <label className="block text-xs font-semibold text-gray-500">
+                Thuế VAT hiện tại (%)
+                <div className="mt-2 flex h-12 overflow-hidden rounded-xl bg-gray-50 ring-1 ring-gray-100 focus-within:ring-2 focus-within:ring-emerald-500">
+                  <input
+                    type="number" min="0" max="100"
+                    value={vatRate}
+                    onChange={(e) => setVatRate(e.target.value)}
+                    className="min-w-0 flex-1 bg-transparent px-4 text-sm font-bold text-gray-800 outline-none"
+                  />
+                  <span className="flex items-center px-4 text-sm font-bold text-gray-400">%</span>
+                </div>
+              </label>
+            </section>
+
+            {/* Tài khoản QR */}
+            <section className="admin-panel-pad">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Bank size={23} weight="bold" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Tài khoản QR</h2>
+                  <p className="text-xs font-medium text-gray-400">Thông tin VietQR</p>
+                </div>
               </div>
-            </label>
-          </section>
+              
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-gray-500">
+                  Mã Ngân hàng
+                  <input
+                    type="text"
+                    value={bankId}
+                    onChange={(e) => setBankId(e.target.value)}
+                    className="mt-1.5 w-full h-10 rounded-xl bg-gray-50 px-3 text-xs font-bold text-gray-800 ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    placeholder="Ví dụ: VCB"
+                  />
+                </label>
+
+                <label className="block text-xs font-semibold text-gray-500">
+                  Số tài khoản
+                  <input
+                    type="text"
+                    value={accountNo}
+                    onChange={(e) => setAccountNo(e.target.value)}
+                    className="mt-1.5 w-full h-10 rounded-xl bg-gray-50 px-3 text-xs font-bold text-gray-800 ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    placeholder="Nhập số tài khoản"
+                  />
+                </label>
+
+                <label className="block text-xs font-semibold text-gray-500">
+                  Tên chủ tài khoản
+                  <input
+                    type="text"
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    className="mt-1.5 w-full h-10 rounded-xl bg-gray-50 px-3 text-xs font-bold text-gray-800 ring-1 ring-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    placeholder="Nhập tên viết liền không dấu"
+                  />
+                </label>
+              </div>
+            </section>
+          </div>
 
           {/* Phương thức thanh toán */}
           <section className="admin-panel-pad">

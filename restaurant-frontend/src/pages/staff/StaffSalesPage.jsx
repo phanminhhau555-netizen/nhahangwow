@@ -37,6 +37,44 @@ export default function StaffSalesPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [checkoutMethod, setCheckoutMethod] = useState("tien_mat");
   const [activePaymentMethods, setActivePaymentMethods] = useState(["tien_mat", "chuyen_khoan", "qr"]);
+  const [settings, setSettings] = useState(null);
+
+  const activeBank = useMemo(() => {
+    let currentBankId = BANK_CONFIG.bankId;
+    let currentAccountNo = BANK_CONFIG.accountNo;
+    let currentAccountName = BANK_CONFIG.accountName;
+
+    if (settings && settings.invoice_template) {
+      try {
+        const tpl = JSON.parse(settings.invoice_template);
+        if (tpl.bank_id) currentBankId = tpl.bank_id;
+        if (tpl.account_no) currentAccountNo = tpl.account_no;
+        if (tpl.account_name) currentAccountName = tpl.account_name;
+      } catch (e) {}
+    }
+
+    return {
+      bankId: currentBankId,
+      accountNo: currentAccountNo,
+      accountName: currentAccountName
+    };
+  }, [settings]);
+
+  useEffect(() => {
+    if (checkoutMethod === "qr" && selectedOrder) {
+      API.get("/api/settings")
+        .then(res => {
+          if (res.data) {
+            setSettings(res.data);
+            if (res.data.payment_methods) {
+              const methods = res.data.payment_methods.split(",").map(s => s.trim());
+              setActivePaymentMethods(methods);
+            }
+          }
+        })
+        .catch(err => console.error("Error updating settings:", err));
+    }
+  }, [checkoutMethod, selectedOrder]);
 
   // Filters State
   const [filterDate, setFilterDate] = useState(getTodayString()); // YYYY-MM-DD mặc định là ngày hôm nay
@@ -51,11 +89,14 @@ export default function StaffSalesPage() {
     fetchOrders();
     API.get("/api/settings")
       .then(res => {
-        if (res.data && res.data.payment_methods) {
-          const methods = res.data.payment_methods.split(",").map(s => s.trim());
-          setActivePaymentMethods(methods);
-          if (methods.length > 0 && !methods.includes(checkoutMethod)) {
-            setCheckoutMethod(methods[0]);
+        if (res.data) {
+          setSettings(res.data);
+          if (res.data.payment_methods) {
+            const methods = res.data.payment_methods.split(",").map(s => s.trim());
+            setActivePaymentMethods(methods);
+            if (methods.length > 0 && !methods.includes(checkoutMethod)) {
+              setCheckoutMethod(methods[0]);
+            }
           }
         }
       })
@@ -536,16 +577,16 @@ export default function StaffSalesPage() {
                     <div className="flex flex-col sm:flex-row items-center gap-4 bg-white border border-slate-100 p-3 rounded-xl shadow-sm">
                       <div className="w-[140px] h-[140px] border border-slate-100 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50">
                         <img
-                          src={`https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-compact2.png?amount=${selectedOrder.total_amount}&addInfo=NHWOW%20${selectedOrder.id}&accountName=${encodeURIComponent(BANK_CONFIG.accountName)}`}
+                          src={`https://img.vietqr.io/image/${activeBank.bankId}-${activeBank.accountNo}-compact2.png?amount=${selectedOrder.total_amount}&addInfo=NHWOW%20${selectedOrder.id}&accountName=${encodeURIComponent(activeBank.accountName)}`}
                           alt="VietQR Code"
                           className="w-full h-full object-contain"
                         />
                       </div>
                       <div className="flex-1 space-y-1 text-xs font-semibold text-slate-600">
                         <p className="text-[10px] font-black text-slate-400 uppercase">Thông tin chuyển khoản</p>
-                        <p><span className="font-bold text-slate-800">Ngân hàng:</span> {BANK_CONFIG.bankId}</p>
-                        <p><span className="font-bold text-slate-800">Số tài khoản:</span> {BANK_CONFIG.accountNo}</p>
-                        <p><span className="font-bold text-slate-800">Chủ tài khoản:</span> {BANK_CONFIG.accountName}</p>
+                        <p><span className="font-bold text-slate-800">Ngân hàng:</span> {activeBank.bankId}</p>
+                        <p><span className="font-bold text-slate-800">Số tài khoản:</span> {activeBank.accountNo}</p>
+                        <p><span className="font-bold text-slate-800">Chủ tài khoản:</span> {activeBank.accountName}</p>
                         <p><span className="font-bold text-slate-800">Số tiền:</span> <span className="font-bold text-emerald-700">{formatMoney(selectedOrder.total_amount)}</span></p>
                         <p><span className="font-bold text-slate-800">Nội dung:</span> <span className="font-mono bg-slate-50 px-1.5 py-0.5 border border-slate-200/50 rounded font-bold text-slate-800">NHWOW {selectedOrder.id}</span></p>
                       </div>

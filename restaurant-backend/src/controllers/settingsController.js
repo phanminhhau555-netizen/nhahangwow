@@ -25,9 +25,15 @@ exports.getConfig = async (req, res) => {
 
 // CẬP NHẬT CẤU HÌNH
 exports.updateConfig = async (req, res) => {
-  const { ten_quan, tax_rate, payment_methods, footer_text, contact_info } = req.body;
+  const { ten_quan, tax_rate, payment_methods, footer_text, contact_info, bank_id, account_no, account_name } = req.body;
   try {
-    const invoice_template = JSON.stringify({ footer: footer_text, contact: contact_info });
+    const invoice_template = JSON.stringify({ 
+      footer: footer_text, 
+      contact: contact_info,
+      bank_id: bank_id || 'VCB',
+      account_no: account_no || '1049144528',
+      account_name: account_name || 'PHAM TRUONG PHAT'
+    });
 
     await db.query(
       `UPDATE config SET

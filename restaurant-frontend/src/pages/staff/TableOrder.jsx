@@ -216,11 +216,49 @@ export default function TableOrder() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("tien_mat");
+  const [showQRModal, setShowQRModal] = useState(false);
   const [activePaymentMethods, setActivePaymentMethods] = useState(["tien_mat", "chuyen_khoan", "qr"]);
   const [settings, setSettings] = useState(null);
   const [cartPanelWidth, setCartPanelWidth] = useState(480);
   const [serverItemsList, setServerItemsList] = useState([]);
   const ITEMS_PER_PAGE = 12;
+
+  const activeBank = useMemo(() => {
+    let currentBankId = BANK_CONFIG.bankId;
+    let currentAccountNo = BANK_CONFIG.accountNo;
+    let currentAccountName = BANK_CONFIG.accountName;
+
+    if (settings && settings.invoice_template) {
+      try {
+        const tpl = JSON.parse(settings.invoice_template);
+        if (tpl.bank_id) currentBankId = tpl.bank_id;
+        if (tpl.account_no) currentAccountNo = tpl.account_no;
+        if (tpl.account_name) currentAccountName = tpl.account_name;
+      } catch (e) {}
+    }
+
+    return {
+      bankId: currentBankId,
+      accountNo: currentAccountNo,
+      accountName: currentAccountName
+    };
+  }, [settings]);
+
+  useEffect(() => {
+    if (showQRModal) {
+      API.get("/api/settings")
+        .then(res => {
+          if (res.data) {
+            setSettings(res.data);
+            if (res.data.payment_methods) {
+              const methods = res.data.payment_methods.split(",").map(s => s.trim());
+              setActivePaymentMethods(methods);
+            }
+          }
+        })
+        .catch(err => console.error("Error updating settings:", err));
+    }
+  }, [showQRModal]);
 
   useEffect(() => {
     fetchData();
@@ -574,18 +612,11 @@ export default function TableOrder() {
     }
   };
 
-  const handleCheckout = async () => {
-    if (cart.length === 0) return;
-    if (table?.status !== "dang_dung") {
-      alert("Bàn phải ở trạng thái có khách trước khi thanh toán.");
-      return;
-    }
-    
+  const executeCheckout = async (method) => {
     setSubmitting(true);
     setError("");
     setSuccess("");
     try {
-      // 1. Tạo hoặc lấy order hiện tại
       let currentOrderId = orderId;
       if (!currentOrderId) {
         const orderRes = await API.post("/api/orders", { table_id: Number(tableId) });
@@ -593,9 +624,8 @@ export default function TableOrder() {
         setOrderId(currentOrderId);
       }
 
-      // 2. Tiến hành thanh toán và gửi kèm danh sách món ăn thực tế còn lại trong bàn
       const checkoutRes = await API.post(`/api/payment/${currentOrderId}/checkout`, {
-        payment_method: paymentMethod,
+        payment_method: method,
         items: cart.map(item => ({
           menu_item_id: item.id,
           quantity: item.quantity,
@@ -604,14 +634,17 @@ export default function TableOrder() {
         }))
       });
 
-      const methodLabel = paymentMethod === "tien_mat" ? "Tiền mặt" : paymentMethod === "chuyen_khoan" ? "Thẻ tín dụng" : "QR Pay";
-      
-      // Tự động in hóa đơn thanh toán
-      printReceipt(currentOrderId, table, cart, settings, paymentMethod, checkoutRes.data.final_amount);
+      const methodLabels = {
+        tien_mat: "Tiền mặt",
+        chuyen_khoan: "Thẻ tín dụng",
+        qr: "QR Pay"
+      };
+      const methodLabel = methodLabels[method] || "Tiền mặt";
 
       alert(`Thanh toán thành công! Số tiền: ${formatMoney(checkoutRes.data.final_amount)} (${methodLabel})`);
       setCart([]);
       localStorage.removeItem(`cart_table_${tableId}`);
+      setShowQRModal(false);
       navigate("/staff/tables");
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi thanh toán!");
@@ -619,6 +652,26 @@ export default function TableOrder() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+    if (table?.status !== "dang_dung") {
+      alert("Bàn phải ở trạng thái có khách trước khi thanh toán.");
+      return;
+    }
+    
+    if (paymentMethod === "qr") {
+      setShowQRModal(true);
+      return;
+    }
+
+    await executeCheckout(paymentMethod);
+  };
+
+  const handlePrintReceipt = () => {
+    if (cart.length === 0) return;
+    printReceipt(orderId || "TAM_TINH", table, cart, settings, paymentMethod, totalAmount);
   };
 
   const formatMoney = (amount) =>
@@ -832,38 +885,34 @@ export default function TableOrder() {
               </div>
             )}
 
-            {paymentMethod === "qr" && totalAmount > 0 && (
-              <div className="flex flex-col items-center gap-2 bg-white border border-slate-100 p-2.5 rounded-xl shadow-sm">
-                <div className="w-[120px] h-[120px] border border-slate-100 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50">
-                  <img
-                    src={`https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-compact2.png?amount=${totalAmount}&addInfo=NHWOW%20${orderId || 'BAN_' + tableId}&accountName=${encodeURIComponent(BANK_CONFIG.accountName)}`}
-                    alt="VietQR Code"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div className="w-full space-y-0.5 text-[10px] font-semibold text-slate-500 text-center">
-                  <p><span className="font-bold text-slate-800">STK VCB:</span> {BANK_CONFIG.accountNo}</p>
-                  <p><span className="font-bold text-slate-800">Tên:</span> {BANK_CONFIG.accountName}</p>
-                  <p><span className="font-bold text-slate-800">Nội dung:</span> <span className="font-mono bg-slate-50 px-1 border border-slate-200/50 rounded font-bold text-slate-800">NHWOW {orderId || 'BAN_' + tableId}</span></p>
-                </div>
-              </div>
-            )}
-
             {/* Action Buttons */}
-            <div className="flex gap-2">
-              <button
-                onClick={handleConfirmOrder}
-                disabled={cart.length === 0 || submitting}
-                className="admin-secondary-btn flex-1 h-10 text-xs font-bold"
-                title="Gửi các món đã tích xuống bếp"
-              >
-                Gửi bếp
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleConfirmOrder}
+                  disabled={cart.length === 0 || submitting}
+                  className="admin-secondary-btn flex-1 h-10 text-xs font-bold"
+                  title="Gửi các món đã tích xuống bếp"
+                >
+                  Gửi bếp
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintReceipt}
+                  disabled={cart.length === 0}
+                  className="admin-secondary-btn flex-1 h-10 text-xs font-bold bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                  title="In phiếu tạm tính cho bàn này"
+                >
+                  In phiếu
+                </button>
+              </div>
               
               <button
+                type="button"
                 onClick={handleCheckout}
                 disabled={cart.length === 0 || submitting}
-                className="admin-primary-btn flex-1 h-10 text-xs font-bold"
+                className="admin-primary-btn w-full h-10 text-xs font-bold"
                 title="Tiến hành thanh toán và kết thúc đơn"
               >
                 {submitting ? "Đang xử lý..." : "Thanh toán"}
@@ -1028,6 +1077,50 @@ export default function TableOrder() {
               </button>
             </div>
           )}
+      {showQRModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden p-6 space-y-4">
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-black text-slate-900">Quét Mã QR Pay</h3>
+              <p className="text-xs text-slate-400 font-semibold">Vui lòng quét mã bên dưới để thanh toán</p>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+              <div className="w-[240px] h-[240px] border border-white rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-1">
+                <img
+                  src={`https://img.vietqr.io/image/${activeBank.bankId}-${activeBank.accountNo}-compact2.png?amount=${totalAmount}&addInfo=NHWOW%20${orderId || 'BAN_' + tableId}&accountName=${encodeURIComponent(activeBank.accountName)}`}
+                  alt="VietQR Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="w-full space-y-1 text-xs font-semibold text-slate-600 text-center">
+                <p><span className="font-bold text-slate-800">STK {activeBank.bankId}:</span> {activeBank.accountNo}</p>
+                <p><span className="font-bold text-slate-800">Chủ tài khoản:</span> {activeBank.accountName}</p>
+                <p><span className="font-bold text-slate-800">Số tiền:</span> <span className="font-black text-emerald-700 text-sm">{formatMoney(totalAmount)}</span></p>
+                <p><span className="font-bold text-slate-800">Nội dung:</span> <span className="font-mono bg-white px-2 py-0.5 border border-slate-200 rounded font-bold text-slate-800">NHWOW {orderId || 'BAN_' + tableId}</span></p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowQRModal(false)}
+                className="flex-1 h-10 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-black transition-colors"
+              >
+                Quay lại
+              </button>
+              <button
+                type="button"
+                onClick={() => executeCheckout("qr")}
+                disabled={submitting}
+                className="flex-1 h-10 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black shadow-lg shadow-emerald-700/25 transition-all flex items-center justify-center"
+              >
+                {submitting ? "Đang xử lý..." : "Xác nhận thanh toán"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       </div>
     </div>

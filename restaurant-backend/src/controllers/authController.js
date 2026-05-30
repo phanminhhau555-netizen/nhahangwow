@@ -5,7 +5,9 @@ const jwt = require('jsonwebtoken');
 // ĐĂNG KÝ
 exports.register = async (req, res) => {
   const { username, password, full_name, role_id } = req.body;
-
+  if (Number(role_id) === 1) {
+    return res.status(403).json({ message: 'Không thể tạo tài khoản admin!' });
+  }
   try {
     // Kiểm tra username đã tồn tại chưa
     const [existing] = await db.query(
@@ -93,7 +95,13 @@ exports.getAccounts = async (req, res) => {
 
 exports.deleteAccount = async (req, res) => {
   try {
-    await db.query('DELETE FROM accounts WHERE id=?', [req.params.id]);
+    await db.query('UPDATE orders SET account_id = NULL WHERE account_id = ?', [req.params.id]);
+    await db.query('UPDATE inventory_logs SET account_id = NULL WHERE account_id = ?', [req.params.id]);
+
+    const [result] = await db.query('DELETE FROM accounts WHERE id=?', [req.params.id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản!' });
+    }
     res.json({ message: 'Xóa tài khoản thành công!' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });

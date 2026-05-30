@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-
-exports.verifyToken = (req, res, next) => {
+const db = require('../config/db');
+exports.verifyToken = async (req, res, next) => {
   const token = req.headers['authorization'];
   if (!token) {
     return res.status(403).json({ message: 'Không có token!' });
@@ -8,6 +8,16 @@ exports.verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Check account còn tồn tại không
+    const [rows] = await db.query(
+      'SELECT id FROM accounts WHERE id = ? AND is_active = 1',
+      [decoded.id]
+    );
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'Tài khoản không còn tồn tại!' });
+    }
+
     req.user = decoded;
     next();
   } catch (err) {

@@ -4,19 +4,16 @@ import Layout from "../../components/Layout";
 import API from "../../services/api";
 
 const roles = [
-  { id: 1, name: "admin", label: "Admin", desc: "Quản lý toàn bộ hệ thống" },
   { id: 2, name: "ban_hang", label: "Staff", desc: "Phục vụ và nhận đơn" },
   { id: 3, name: "bep", label: "Kitchen", desc: "Quản lý chế biến món ăn" },
 ];
 
 const rolePermissions = {
-  1: ["Xem toàn bộ báo cáo", "Quản lý nhân viên", "Quản lý thực đơn", "Cấu hình hệ thống"],
   2: ["Xem sơ đồ bàn", "Nhận order", "Thanh toán"],
   3: ["Theo dõi bếp", "Cập nhật món", "Quản lý kho nguyên liệu"],
 };
 
 const roleTone = {
-  1: "bg-violet-50 text-violet-700",
   2: "bg-blue-50 text-blue-700",
   3: "bg-amber-50 text-amber-700",
 };
@@ -33,6 +30,11 @@ export default function Staff() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const staffAccounts = useMemo(
+    () => accounts.filter((a) => Number(a.role_id) !== 1),
+    [accounts]
+  );
 
   const roleCounts = useMemo(
     () =>
@@ -57,7 +59,6 @@ export default function Staff() {
   useEffect(() => {
     let mounted = true;
     const timer = setTimeout(() => fetchAccounts(() => mounted), 0);
-
     return () => {
       mounted = false;
       clearTimeout(timer);
@@ -83,9 +84,13 @@ export default function Staff() {
 
   const handleDelete = async (account) => {
     if (!window.confirm(`Xóa tài khoản ${account.full_name}?`)) return;
-
-    await API.delete(`/api/auth/accounts/${account.id}`);
-    fetchAccounts();
+    try {
+      await API.delete(`/api/auth/accounts/${account.id}`);
+      setSuccess("Đã xóa tài khoản.");
+      fetchAccounts();
+    } catch (err) {
+      setError(err.response?.data?.message || "Không xóa được tài khoản.");
+    }
   };
 
   const getRoleInfo = (roleId) => roles.find((role) => role.id === Number(roleId));
@@ -103,7 +108,7 @@ export default function Staff() {
           </div>
           <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-slate-400">Tổng nhân sự</p>
-            <p className="mt-0.5 text-xl font-black text-slate-950">{accounts.length}</p>
+            <p className="mt-0.5 text-xl font-black text-slate-950">{staffAccounts.length}</p>
           </div>
         </header>
 
@@ -119,7 +124,7 @@ export default function Staff() {
           </div>
         )}
 
-        <section className="grid gap-3 xl:grid-cols-3">
+        <section className="grid gap-3 xl:grid-cols-2">
           {roleCounts.map((role) => (
             <article key={role.id} className="admin-panel-pad admin-lift">
               <div className="flex items-center justify-between gap-3">
@@ -140,7 +145,7 @@ export default function Staff() {
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
               <div>
                 <h2 className="admin-section-title">Danh sách nhân viên</h2>
-                <p className="admin-muted mt-0.5">{accounts.length} tài khoản trong hệ thống</p>
+                <p className="admin-muted mt-0.5">{staffAccounts.length} tài khoản trong hệ thống</p>
               </div>
               <UsersThree size={22} className="text-emerald-700" weight="duotone" />
             </div>
@@ -151,7 +156,7 @@ export default function Staff() {
                   <div key={item} className="h-12 animate-pulse rounded-xl bg-slate-100" />
                 ))}
               </div>
-            ) : accounts.length === 0 ? (
+            ) : staffAccounts.length === 0 ? (
               <div className="px-6 py-12 text-center">
                 <p className="font-black text-slate-800">Chưa có nhân viên</p>
                 <p className="mt-2 text-sm font-semibold text-slate-400">
@@ -170,7 +175,7 @@ export default function Staff() {
                     </tr>
                   </thead>
                   <tbody>
-                    {accounts.map((account) => (
+                    {staffAccounts.map((account) => (
                       <tr key={account.id}>
                         <td>
                           <div className="flex items-center gap-2.5">

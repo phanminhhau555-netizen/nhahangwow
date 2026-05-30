@@ -221,7 +221,7 @@ export default function TablesPage() {
                 return (
                   <button
                     key={table.id}
-                    onClick={() => {
+                    onDoubleClick={() => {
                       if (table.status === "trong") {
                         handleUpdateTableStatus(table.id, "dang_dung").then(() => {
                           navigate(`/staff/orders/${table.id}`);
@@ -268,7 +268,7 @@ export default function TablesPage() {
                       </p>
                     )}
                     {table.status === "trong" && (
-                      <p className="mt-1 text-[11px] font-semibold text-slate-400">Nhấn để đặt món</p>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-400">Nhấp đúp để đặt món</p>
                     )}
                   </button>
                 );

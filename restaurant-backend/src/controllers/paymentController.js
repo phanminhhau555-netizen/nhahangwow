@@ -135,12 +135,8 @@ exports.checkout = async (req, res) => {
 
     // Cộng điểm khách hàng nếu có
     if (customer_id) {
-      const points = Math.floor(final_amount / 10000);
-      await db.query(
-        'UPDATE customers SET points = points + ? WHERE id=?',
-        [points, customer_id]
-      );
-    }
+  await addPointsFromOrder(customer_id, Number(order_id), final_amount);
+}
 
     // Tự động trừ kho nguyên liệu
     await deductInventory(order_id);

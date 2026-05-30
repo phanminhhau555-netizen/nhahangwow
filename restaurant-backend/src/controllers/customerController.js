@@ -185,3 +185,138 @@ async function updateMembership(customer_id) {
     [membership, customer_id]
   );
 }
+exports.lookupOrCreate = async (req, res) => {
+  const { phone } = req.body;
+  if (!phone?.trim()) {
+    return res.status(400).json({ message: 'Vui lòng nhập số điện thoại.' });
+  }
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM customers WHERE phone = ?',
+      [phone.trim()]
+    );
+    if (rows.length > 0) {
+      return res.json({ customer: rows[0], isNew: false });
+    }
+ 
+    // Chưa tồn tại → tạo mới với chỉ SĐT
+    const [result] = await db.query(
+      'INSERT INTO customers (phone) VALUES (?)',
+      [phone.trim()]
+    );
+    const [newCustomer] = await db.query(
+      'SELECT * FROM customers WHERE id = ?',
+      [result.insertId]
+    );
+    res.status(201).json({ customer: newCustomer[0], isNew: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+ 
+// [MỚI] LẤY LỊCH SỬ ĐIỂM
+// GET /api/customers/:id/points-history
+exports.getPointsHistory = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT pt.*, o.total_amount
+       FROM points_transactions pt
+       LEFT JOIN orders o ON pt.order_id = o.id
+       WHERE pt.customer_id = ?
+       ORDER BY pt.created_at DESC
+       LIMIT 50`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+ 
+// [SỬA] CỘNG ĐIỂM — thêm ghi log vào points_transactions
+// Giữ nguyên signature, chỉ thêm INSERT log + sửa ngưỡng membership
+exports.addPoints = async (req, res) => {
+  const { points, note } = req.body;
+  const customer_id = req.params.id;
+  try {
+    await db.query(
+      'UPDATE customers SET points = points + ? WHERE id=?',
+      [points, customer_id]
+    );
+ 
+    // Ghi log giao dịch điểm
+    await db.query(
+      `INSERT INTO points_transactions (customer_id, type, points, note)
+       VALUES (?, 'cong', ?, ?)`,
+      [customer_id, points, note || `Cộng thủ công ${points} điểm`]
+    );
+ 
+    await updateMembership(customer_id);
+    res.json({ message: `Đã cộng ${points} điểm thành công!` });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+ 
+// [SỬA] HÀM NỘI BỘ — sửa ngưỡng bạc từ 2000 → 1000 cho đồng bộ
+// và export để paymentController dùng
+async function updateMembership(customer_id) {
+  const [customer] = await db.query(
+    'SELECT points FROM customers WHERE id=?',
+    [customer_id]
+  );
+  const points = customer[0].points;
+  let membership = 'thuong';
+  if (points >= 5000) membership = 'vang';
+  else if (points >= 1000) membership = 'bac'; // cũ là 2000
+ 
+  await db.query(
+    'UPDATE customers SET membership=? WHERE id=?',
+    [membership, customer_id]
+  );
+}
+ 
+// [MỚI] Dùng nội bộ từ paymentController khi checkout
+// Thay thế đoạn cộng điểm cũ trong paymentController.js
+exports.addPointsFromOrder = async (customer_id, order_id, final_amount) => {
+  const points = Math.floor(final_amount / 1000); // 1.000đ = 1 điểm
+  if (points <= 0) return;
+ 
+  await db.query(
+    'UPDATE customers SET points = points + ? WHERE id=?',
+    [points, customer_id]
+  );
+  await db.query(
+    `INSERT INTO points_transactions (customer_id, order_id, type, points, note)
+     VALUES (?, ?, 'cong', ?, ?)`,
+    [customer_id, order_id, points, `Thanh toán đơn #${order_id}`]
+  );
+  await updateMembership(customer_id);
+};
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

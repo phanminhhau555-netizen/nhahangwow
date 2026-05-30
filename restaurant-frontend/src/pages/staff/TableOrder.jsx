@@ -700,68 +700,91 @@ export default function TableOrder() {
           </div>
 
           {/* Cart Items */}
-          <div className="flex-1 space-y-2 overflow-auto p-3">
+          <div className="flex-1 overflow-auto p-2">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                 <ForkKnife size={32} className="mb-2 text-slate-300" weight="duotone" />
                 <p className="text-xs font-semibold">Bổ sung món ngon vào giỏ</p>
               </div>
             ) : (
-              cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={item.sendToKitchen !== false}
-                    onChange={() => toggleSendToKitchen(item.id)}
-                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer shrink-0"
-                    title="Gửi xuống bếp khi xác nhận"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">{item.name}</p>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                      <input
-                        type="number"
-                        step="any"
-                        value={item.price}
-                        onChange={(e) => updatePrice(item.id, e.target.value)}
-                        onBlur={(e) => handlePriceBlur(item.id, e.target.value)}
-                        className="w-16 text-xs text-green-600 font-black border-b border-dashed border-green-300 focus:border-green-500 focus:outline-none bg-transparent py-0 px-0.5"
-                        title="Chỉnh đơn giá món (chỉ ở bàn này)"
-                      />
-                      <span className="text-[10px] text-green-600 font-bold -ml-1">đ</span>
-                      {renderStatusBadges(item)}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1">
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="flex h-6 w-6 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-100"
-                    >
-                      <Minus size={11} weight="bold" />
-                    </button>
-                    <input
-                      type="number"
-                      step="any"
-                      value={item.quantity}
-                      onChange={(e) => updateQuantity(item.id, e.target.value)}
-                      onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
-                      className="w-10 text-center text-xs font-black text-slate-800 bg-transparent focus:outline-none border-b border-dashed border-slate-300 focus:border-slate-500 py-0"
-                      title="Chỉnh số lượng (chấp nhận số thập phân)"
-                    />
-                    <button
-                      onClick={() => addToCart(item)}
-                      className="flex h-6 w-6 items-center justify-center rounded text-emerald-700 transition-colors hover:bg-emerald-50"
-                    >
-                      <Plus size={11} weight="bold" />
-                    </button>
-                  </div>
-
-                  <p className="w-16 text-right text-[12px] font-black text-slate-800">
-                    {formatMoney(item.price * item.quantity)}
-                  </p>
-                </div>
-              ))
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[9px] bg-slate-50/50">
+                    <th className="p-1 text-center w-6"></th>
+                    <th className="p-1.5 text-left">Tên món</th>
+                    <th className="p-1.5 text-center w-12">ĐVT</th>
+                    <th className="p-1.5 text-center w-28">SL</th>
+                    <th className="p-1.5 text-right w-20">Đ giá</th>
+                    <th className="p-1.5 text-right w-20">T tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.map((item) => (
+                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/40 transition-colors">
+                      <td className="p-1 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          checked={item.sendToKitchen !== false}
+                          onChange={() => toggleSendToKitchen(item.id)}
+                          className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                          title="Gửi xuống bếp khi xác nhận"
+                        />
+                      </td>
+                      <td className="p-1.5 text-left font-medium text-slate-800 align-middle">
+                        <div className="space-y-0.5">
+                          <p className="font-semibold leading-tight">{item.name}</p>
+                          {renderStatusBadges(item)}
+                        </div>
+                      </td>
+                      <td className="p-1.5 text-center text-slate-500 capitalize align-middle">{item.unit || "phần"}</td>
+                      <td className="p-1.5 text-center align-middle">
+                        <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-0.5">
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                            className="flex h-5 w-5 items-center justify-center rounded text-slate-500 transition-colors hover:bg-slate-100"
+                          >
+                            <Minus size={9} weight="bold" />
+                          </button>
+                          <input
+                            type="number"
+                            step="any"
+                            value={item.quantity}
+                            onChange={(e) => updateQuantity(item.id, e.target.value)}
+                            onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
+                            className="w-8 text-center text-xs font-black text-slate-800 bg-transparent focus:outline-none border-b border-dashed border-slate-300 focus:border-slate-500 py-0"
+                            title="Chỉnh số lượng (chấp nhận số thập phân)"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addToCart(item)}
+                            className="flex h-5 w-5 items-center justify-center rounded text-emerald-700 transition-colors hover:bg-emerald-50"
+                          >
+                            <Plus size={9} weight="bold" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-1.5 text-right align-middle">
+                        <div className="inline-flex items-center justify-end gap-0.5">
+                          <input
+                            type="number"
+                            step="any"
+                            value={item.price}
+                            onChange={(e) => updatePrice(item.id, e.target.value)}
+                            onBlur={(e) => handlePriceBlur(item.id, e.target.value)}
+                            className="w-14 text-[11px] text-green-600 font-black border-b border-dashed border-green-300 focus:border-green-500 focus:outline-none bg-transparent py-0 px-0.5 text-right"
+                            title="Chỉnh đơn giá món (chỉ ở bàn này)"
+                          />
+                          <span className="text-[10px] text-green-600 font-bold">đ</span>
+                        </div>
+                      </td>
+                      <td className="p-1.5 text-right font-black text-slate-800 align-middle">
+                        {formatMoney(Number(item.price || 0) * Number(item.quantity || 0))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { ArrowClockwise, CalendarBlank, Clock, MagnifyingGlass, Receipt, User, Users } from "@phosphor-icons/react";
+import { ArrowClockwise, CalendarBlank, Clock, MagnifyingGlass, Receipt, User, Users, Money, CreditCard, QrCode } from "@phosphor-icons/react";
 import API from "../../services/api";
 
 const STATUS_CONFIG = {
@@ -11,8 +11,8 @@ const STATUS_CONFIG = {
 
 const PAYMENT_METHODS = {
   tien_mat: "Tiền mặt",
-  chuyen_khoan: "Chuyển khoản",
-  qr: "Mã QR"
+  chuyen_khoan: "Thẻ tín dụng",
+  qr: "QR Pay"
 };
 
 const BANK_CONFIG = {
@@ -36,6 +36,7 @@ export default function StaffSalesPage() {
   const [orderDetail, setOrderDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [checkoutMethod, setCheckoutMethod] = useState("tien_mat");
+  const [activePaymentMethods, setActivePaymentMethods] = useState(["tien_mat", "chuyen_khoan", "qr"]);
 
   // Filters State
   const [filterDate, setFilterDate] = useState(getTodayString()); // YYYY-MM-DD mặc định là ngày hôm nay
@@ -48,6 +49,17 @@ export default function StaffSalesPage() {
 
   useEffect(() => {
     fetchOrders();
+    API.get("/api/settings")
+      .then(res => {
+        if (res.data && res.data.payment_methods) {
+          const methods = res.data.payment_methods.split(",").map(s => s.trim());
+          setActivePaymentMethods(methods);
+          if (methods.length > 0 && !methods.includes(checkoutMethod)) {
+            setCheckoutMethod(methods[0]);
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const fetchOrders = async () => {
@@ -494,24 +506,33 @@ export default function StaffSalesPage() {
                   <span className="text-xs font-black text-orange-800 uppercase tracking-wider block">
                     Xử lý thanh toán hóa đơn
                   </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {Object.entries(PAYMENT_METHODS).map(([key, label]) => (
-                      <button
-                        key={key}
-                        onClick={() => setCheckoutMethod(key)}
-                        type="button"
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
-                          checkoutMethod === key
-                            ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm"
-                            : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div className={`grid gap-2 ${
+                    activePaymentMethods.length === 1 ? "grid-cols-1" :
+                    activePaymentMethods.length === 2 ? "grid-cols-2" : "grid-cols-3"
+                  }`}>
+                    {Object.entries(PAYMENT_METHODS)
+                      .filter(([key]) => activePaymentMethods.includes(key))
+                      .map(([key, label]) => {
+                        const Icon = key === "tien_mat" ? Money : key === "chuyen_khoan" ? CreditCard : QrCode;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setCheckoutMethod(key)}
+                            type="button"
+                            className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-center transition-all ${
+                              checkoutMethod === key
+                                ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
+                                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            <Icon size={16} weight="duotone" className={checkoutMethod === key ? "text-emerald-700" : "text-slate-400"} />
+                            <span className="text-[10px] font-bold mt-1 leading-none">{label}</span>
+                          </button>
+                        );
+                      })}
                   </div>
 
-                  {(checkoutMethod === "chuyen_khoan" || checkoutMethod === "qr") && (
+                  {checkoutMethod === "qr" && (
                     <div className="flex flex-col sm:flex-row items-center gap-4 bg-white border border-slate-100 p-3 rounded-xl shadow-sm">
                       <div className="w-[140px] h-[140px] border border-slate-100 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50">
                         <img

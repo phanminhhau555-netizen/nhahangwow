@@ -9,6 +9,9 @@ import {
   Plus,
   Minus,
   MagnifyingGlass,
+  Money,
+  CreditCard,
+  QrCode,
 } from "@phosphor-icons/react";
 import API from "../../services/api";
 
@@ -75,6 +78,127 @@ const renderStatusBadges = (item) => {
   return badges;
 };
 
+const printReceipt = (orderId, table, cart, settings, paymentMethod, finalAmount) => {
+  const printWindow = window.open("", "_blank", "width=600,height=800");
+  if (!printWindow) {
+    alert("Vui lòng bật quyền hiển thị cửa sổ bật lên (popup) trên trình duyệt để tự động in hóa đơn.");
+    return;
+  }
+
+  const tenQuan = settings?.ten_quan || "RESTO DELUXE";
+  let contact = "123 Đường Ẩm Thực, Quận 1, TP. HCM";
+  let footer = "Cảm ơn quý khách và hẹn gặp lại!";
+  
+  if (settings?.invoice_template) {
+    try {
+      const tpl = JSON.parse(settings.invoice_template);
+      if (tpl.contact) contact = tpl.contact;
+      if (tpl.footer) footer = tpl.footer;
+    } catch (e) {}
+  }
+
+  const taxRate = settings?.tax_rate != null ? Number(settings.tax_rate) : 10;
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const taxAmount = Math.round((subtotal * taxRate) / 100);
+  const total = subtotal + taxAmount;
+
+  const itemsHtml = cart.map(item => `
+    <tr>
+      <td style="padding: 4px 0; font-family: monospace;">${item.name} x${item.quantity}</td>
+      <td style="padding: 4px 0; text-align: right; font-family: monospace;">${new Intl.NumberFormat("vi-VN").format(item.price * item.quantity)}</td>
+    </tr>
+  `).join("");
+
+  const methodLabels = {
+    tien_mat: "Tiền mặt",
+    chuyen_khoan: "Thẻ tín dụng",
+    qr: "QR Pay"
+  };
+  const methodLabel = methodLabels[paymentMethod] || "Tiền mặt";
+
+  const htmlContent = `
+    <html>
+      <head>
+        <title>Hóa đơn #${orderId}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          body {
+            width: 72mm;
+            margin: 0 auto;
+            padding: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+          }
+          .text-center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center">
+          <p class="bold" style="font-size: 16px; margin: 0 0 5px 0;">${tenQuan}</p>
+          <p style="margin: 0 0 10px 0; font-size: 10px;">${contact}</p>
+          <p class="bold" style="margin: 0 0 5px 0;">HÓA ĐƠN THANH TOÁN</p>
+          <p style="margin: 0 0 5px 0;">Bàn: ${table?.name || "Bàn"}</p>
+          <p style="margin: 0 0 5px 0;">Mã HD: #${orderId}</p>
+          <p style="margin: 0 0 10px 0; font-size: 10px;">Thời gian: ${new Date().toLocaleString("vi-VN")}</p>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 4px 0;">Món ăn</th>
+              <th style="text-align: right; padding: 4px 0;">T.Tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        
+        <div class="divider"></div>
+        
+        <table style="font-size: 11px;">
+          <tr>
+            <td style="padding: 2px 0;">Tạm tính:</td>
+            <td style="text-align: right; padding: 2px 0;">${new Intl.NumberFormat("vi-VN").format(subtotal)}đ</td>
+          </tr>
+          <tr>
+            <td style="padding: 2px 0;">Thuế VAT (${taxRate}%):</td>
+            <td style="text-align: right; padding: 2px 0;">${new Intl.NumberFormat("vi-VN").format(taxAmount)}đ</td>
+          </tr>
+          <tr class="bold" style="font-size: 13px;">
+            <td style="padding: 4px 0;">TỔNG CỘNG:</td>
+            <td style="text-align: right; padding: 4px 0;">${new Intl.NumberFormat("vi-VN").format(finalAmount || total)}đ</td>
+          </tr>
+        </table>
+        
+        <div class="divider"></div>
+        
+        <div class="text-center" style="font-size: 10px; margin-top: 10px;">
+          <p style="margin: 0 0 5px 0;">PTTT: ${methodLabel}</p>
+          <p style="margin: 0; font-style: italic;">${footer}</p>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+};
+
 export default function TableOrder() {
   const { tableId } = useParams();
   const navigate = useNavigate();
@@ -92,6 +216,8 @@ export default function TableOrder() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("tien_mat");
+  const [activePaymentMethods, setActivePaymentMethods] = useState(["tien_mat", "chuyen_khoan", "qr"]);
+  const [settings, setSettings] = useState(null);
   const [cartPanelWidth, setCartPanelWidth] = useState(480);
   const [serverItemsList, setServerItemsList] = useState([]);
   const ITEMS_PER_PAGE = 12;
@@ -106,17 +232,30 @@ export default function TableOrder() {
 
   const fetchData = async () => {
     try {
-      const [tableRes, menuRes, categoriesRes, activeOrdersRes] = await Promise.all([
+      const [tableRes, menuRes, categoriesRes, activeOrdersRes, settingsRes] = await Promise.all([
         API.get(`/api/tables/${tableId}`),
         API.get("/api/menu"),
         API.get("/api/menu/categories"),
         API.get("/api/orders/active"),
+        API.get("/api/settings"),
       ]);
 
       const tableData = tableRes.data;
       setTable(tableData);
       setMenu(menuRes.data.filter((m) => m.is_visible));
       setCategories(categoriesRes.data || []);
+
+      // Phân tích và thiết lập các phương thức thanh toán được bật
+      if (settingsRes.data) {
+        setSettings(settingsRes.data);
+        if (settingsRes.data.payment_methods) {
+          const methods = settingsRes.data.payment_methods.split(",").map(s => s.trim());
+          setActivePaymentMethods(methods);
+          if (methods.length > 0 && !methods.includes(paymentMethod)) {
+            setPaymentMethod(methods[0]);
+          }
+        }
+      }
 
       // 1. Lấy giỏ hàng nháp từ localStorage nếu có
       const savedCartStr = localStorage.getItem(`cart_table_${tableId}`);
@@ -284,7 +423,7 @@ export default function TableOrder() {
       const existing = prev.find((c) => c.id === item.id);
       if (existing) {
         return prev.map((c) =>
-          c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
+          c.id === item.id ? { ...c, quantity: Number(c.quantity) + 1 } : c
         );
       }
       return [...prev, { ...item, quantity: 1, note: "", sendToKitchen: true, serverParts: [] }];
@@ -302,15 +441,58 @@ export default function TableOrder() {
   const removeFromCart = (id) => {
     setCart((prev) => {
       const existing = prev.find((c) => c.id === id);
-      if (existing.quantity === 1) return prev.filter((c) => c.id !== id);
-      return prev.map((c) => c.id === id ? { ...c, quantity: c.quantity - 1 } : c);
+      if (Number(existing.quantity) <= 1) return prev.filter((c) => c.id !== id);
+      return prev.map((c) => c.id === id ? { ...c, quantity: Math.max(0, Number(c.quantity) - 1) } : c);
     });
   };
 
-  const getCartQty = (id) => cart.find((c) => c.id === id)?.quantity || 0;
+  const updateQuantity = (id, val) => {
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          if (val === "") return { ...c, quantity: "" };
+          const parsed = parseFloat(val);
+          return { ...c, quantity: isNaN(parsed) ? 0 : parsed };
+        }
+        return c;
+      })
+    );
+  };
 
-  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const handleQuantityBlur = (id, quantity) => {
+    if (quantity === "" || Number(quantity) <= 0) {
+      setCart((prev) => prev.filter((c) => c.id !== id));
+    }
+  };
+
+  const updatePrice = (id, val) => {
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          if (val === "") return { ...c, price: "" };
+          const parsed = parseFloat(val);
+          return { ...c, price: isNaN(parsed) ? 0 : parsed };
+        }
+        return c;
+      })
+    );
+  };
+
+  const handlePriceBlur = (id, price) => {
+    if (price === "" || Number(price) < 0) {
+      setCart((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, price: 0 } : c))
+      );
+    }
+  };
+
+  const getCartQty = (id) => {
+    const item = cart.find((c) => c.id === id);
+    return item ? Number(item.quantity) : 0;
+  };
+
+  const totalAmount = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+  const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
   const getCategoryTone = (id) =>
     CATEGORY_TONES[Math.abs(Number(id) || 0) % CATEGORY_TONES.length];
@@ -422,7 +604,11 @@ export default function TableOrder() {
         }))
       });
 
-      const methodLabel = paymentMethod === "tien_mat" ? "Tiền mặt" : paymentMethod === "chuyen_khoan" ? "Chuyển khoản" : "Mã QR";
+      const methodLabel = paymentMethod === "tien_mat" ? "Tiền mặt" : paymentMethod === "chuyen_khoan" ? "Thẻ tín dụng" : "QR Pay";
+      
+      // Tự động in hóa đơn thanh toán
+      printReceipt(currentOrderId, table, cart, settings, paymentMethod, checkoutRes.data.final_amount);
+
       alert(`Thanh toán thành công! Số tiền: ${formatMoney(checkoutRes.data.final_amount)} (${methodLabel})`);
       setCart([]);
       localStorage.removeItem(`cart_table_${tableId}`);
@@ -533,7 +719,16 @@ export default function TableOrder() {
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">{item.name}</p>
                     <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-green-600 font-semibold mr-1">{formatMoney(item.price)}</span>
+                      <input
+                        type="number"
+                        step="any"
+                        value={item.price}
+                        onChange={(e) => updatePrice(item.id, e.target.value)}
+                        onBlur={(e) => handlePriceBlur(item.id, e.target.value)}
+                        className="w-16 text-xs text-green-600 font-black border-b border-dashed border-green-300 focus:border-green-500 focus:outline-none bg-transparent py-0 px-0.5"
+                        title="Chỉnh đơn giá món (chỉ ở bàn này)"
+                      />
+                      <span className="text-[10px] text-green-600 font-bold -ml-1">đ</span>
                       {renderStatusBadges(item)}
                     </div>
                   </div>
@@ -545,9 +740,15 @@ export default function TableOrder() {
                     >
                       <Minus size={11} weight="bold" />
                     </button>
-                    <span className="w-5 text-center text-xs font-black text-slate-800">
-                      {item.quantity}
-                    </span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={item.quantity}
+                      onChange={(e) => updateQuantity(item.id, e.target.value)}
+                      onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
+                      className="w-10 text-center text-xs font-black text-slate-800 bg-transparent focus:outline-none border-b border-dashed border-slate-300 focus:border-slate-500 py-0"
+                      title="Chỉnh số lượng (chấp nhận số thập phân)"
+                    />
                     <button
                       onClick={() => addToCart(item)}
                       className="flex h-6 w-6 items-center justify-center rounded text-emerald-700 transition-colors hover:bg-emerald-50"
@@ -573,32 +774,42 @@ export default function TableOrder() {
             </div>
 
             {/* Payment Method Selector */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phương thức thanh toán</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: "tien_mat", label: "Tiền mặt", icon: "💵" },
-                  { id: "chuyen_khoan", label: "Chuyển khoản", icon: "💳" },
-                  { id: "qr", label: "Mã QR", icon: "📱" }
-                ].map(method => (
-                  <button
-                    key={method.id}
-                    type="button"
-                    onClick={() => setPaymentMethod(method.id)}
-                    className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl border text-center transition-all ${
-                      paymentMethod === method.id
-                        ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
-                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span className="text-sm">{method.icon}</span>
-                    <span className="text-[9px] font-bold mt-1 leading-none">{method.label}</span>
-                  </button>
-                ))}
+            {activePaymentMethods.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phương thức thanh toán</label>
+                <div className={`grid gap-2 ${
+                  activePaymentMethods.length === 1 ? "grid-cols-1" :
+                  activePaymentMethods.length === 2 ? "grid-cols-2" : "grid-cols-3"
+                }`}>
+                  {[
+                    { id: "tien_mat", label: "Tiền mặt", icon: Money },
+                    { id: "chuyen_khoan", label: "Thẻ tín dụng", icon: CreditCard },
+                    { id: "qr", label: "QR Pay", icon: QrCode }
+                  ]
+                    .filter(method => activePaymentMethods.includes(method.id))
+                    .map(method => {
+                      const Icon = method.icon;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl border text-center transition-all ${
+                            paymentMethod === method.id
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
+                              : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Icon size={16} weight="duotone" className={paymentMethod === method.id ? "text-emerald-700" : "text-slate-400"} />
+                          <span className="text-[9px] font-bold mt-1 leading-none">{method.label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
-            </div>
+            )}
 
-            {(paymentMethod === "chuyen_khoan" || paymentMethod === "qr") && totalAmount > 0 && (
+            {paymentMethod === "qr" && totalAmount > 0 && (
               <div className="flex flex-col items-center gap-2 bg-white border border-slate-100 p-2.5 rounded-xl shadow-sm">
                 <div className="w-[120px] h-[120px] border border-slate-100 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50">
                   <img

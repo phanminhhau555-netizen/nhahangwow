@@ -144,7 +144,7 @@ CREATE TABLE order_items (
   id INT PRIMARY KEY AUTO_INCREMENT,
   order_id INT,
   menu_item_id INT,
-  quantity INT NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   note TEXT,
   status ENUM('cho', 'dang_nau', 'hoan_thanh', 'huy') DEFAULT 'cho',

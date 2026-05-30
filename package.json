@@ -1,8 +1,0 @@
-{
-  "name": "nhahangwow",
-  "private": true,
-  "scripts": {
-    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1",
-    "start": "npm run dev"
-  }
-}

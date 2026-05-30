@@ -1,38 +1,43 @@
-# Restaurant Fullstack Project
+# NhaHangWow
+
+Đồ án môn **SE104 – Nhập môn Công nghệ Phần mềm** · Trường Đại học Công nghệ Thông tin (UIT)
+
+Hệ thống quản lý nhà hàng fullstack hỗ trợ 3 vai trò: Admin, Nhân viên phục vụ và Bếp.
 
 ## Tech Stack
-- Frontend: ReactJS + Vite + TailwindCSS
-- Backend: Node.js + Express + MySQL + Sequelize + JWT
 
----
+- **Frontend:** React 18, Vite, TailwindCSS, React Router, Axios
+- **Backend:** Node.js, Express.js, JWT
+- **Database:** MySQL 8
+- **Realtime:** Socket.IO
 
-## Project Setup
+## Cài đặt
+
 ```bash
+# 1. Import database
+mysql -u root -p < schema.sql
 
+# 2. Backend
 cd restaurant-backend
+npm install
+node src/scripts/seedAdmin.js
+node src/app.js
 
-
-npm install express dotenv cors bcryptjs jsonwebtoken
-
-npm install mysql2 sequelize
-
---Nho tai MySQL de chay schema.sql
-
-PORT=5000 
-DB_HOST= //localhost 
-DB_NAME= //database_name 
-DB_USER= //root 
-DB_PASSWORD= //mk_cua_ban
-
---De start backend su dung:
-+ node src/app.js 
-
---frontend
-
+# 3. Frontend
 cd restaurant-frontend
-
-npm install -D tailwindcss@3 postcss autoprefixer
-
-npm install axios react-router-dom
-
+npm install
 npm run dev
+```
+
+## .env
+
+```env
+PORT=8000
+DB_HOST=localhost
+DB_NAME=nhahangwow
+DB_USER=root
+DB_PASSWORD=
+JWT_SECRET=
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=
+```

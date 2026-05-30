@@ -116,8 +116,8 @@ exports.deleteOrderItem = async (req, res) => {
     const [item] = await db.query(
       'SELECT * FROM order_items WHERE id=?', [req.params.itemId]
     );
-    if (item[0].status !== 'cho') {
-      return res.status(400).json({ message: 'Không thể hủy món đang nấu!' });
+    if (item.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy món ăn!' });
     }
     await db.query('DELETE FROM order_items WHERE id=?', [req.params.itemId]);
     await updateOrderTotal(req.params.id);
@@ -219,6 +219,25 @@ exports.getAllOrders = async (req, res) => {
       ORDER BY o.created_at DESC
     `);
     res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server', error: err.message });
+  }
+};
+
+// XÓA HOÀN TOÀN HÓA ĐƠN/ORDER VÀ CÁC MÓN ĐI KÈM
+exports.deleteOrder = async (req, res) => {
+  const order_id = req.params.id;
+  try {
+    // Xóa tất cả các món ăn trong order trước
+    await db.query('DELETE FROM order_items WHERE order_id=?', [order_id]);
+    // Xóa order
+    const [result] = await db.query('DELETE FROM orders WHERE id=?', [order_id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy hóa đơn!' });
+    }
+    
+    res.json({ message: 'Xóa hóa đơn thành công!' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }

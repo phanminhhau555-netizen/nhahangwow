@@ -12,5 +12,6 @@ router.post('/:id/items', verifyToken, orderController.addOrderItem);
 router.post('/:id/send', verifyToken, orderController.sendToKitchen);
 router.patch('/:id/items/:itemId/status', verifyToken, orderController.updateItemStatus);
 router.delete('/:id/items/:itemId', verifyToken, orderController.deleteOrderItem);
+router.delete('/:id', verifyToken, orderController.deleteOrder);
 
 module.exports = router;

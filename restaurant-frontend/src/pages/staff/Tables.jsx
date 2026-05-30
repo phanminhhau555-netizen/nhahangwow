@@ -221,13 +221,16 @@ export default function TablesPage() {
                 return (
                   <button
                     key={table.id}
+                    onClick={() => {
+                      if (table.status === "dang_dung") {
+                        navigate(`/staff/orders/${table.id}`);
+                      }
+                    }}
                     onDoubleClick={() => {
                       if (table.status === "trong") {
                         handleUpdateTableStatus(table.id, "dang_dung").then(() => {
                           navigate(`/staff/orders/${table.id}`);
                         });
-                      } else if (table.status === "dang_dung") {
-                        navigate(`/staff/orders/${table.id}`);
                       }
                     }}
                     onContextMenu={(e) => {

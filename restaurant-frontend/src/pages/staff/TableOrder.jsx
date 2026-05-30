@@ -27,6 +27,54 @@ const CATEGORY_TONES = [
   "bg-orange-100 text-orange-700",
 ];
 
+const BANK_CONFIG = {
+  bankId: "VCB",
+  accountNo: "1049144528",
+  accountName: "PHAM TRUONG PHAT"
+};
+
+const renderStatusBadges = (item) => {
+  const badges = [];
+  
+  // 1. Ô hiển thị số lượng đã gửi bếp kèm trạng thái màu sắc (nhóm theo trạng thái)
+  if (item.serverParts && item.serverParts.length > 0) {
+    const statusConfigs = {
+      cho: { label: "chờ bếp", style: "bg-amber-100 text-amber-800 border-amber-200" },
+      dang_nau: { label: "đang làm", style: "bg-blue-100 text-blue-800 border-blue-200" },
+      hoan_thanh: { label: "đã ra món", style: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+      huy: { label: "đã hủy", style: "bg-rose-100 text-rose-800 border-rose-200" },
+    };
+    
+    // Nhóm serverParts theo trạng thái để cộng dồn số lượng
+    const groupedParts = {};
+    item.serverParts.forEach(part => {
+      groupedParts[part.status] = (groupedParts[part.status] || 0) + Number(part.quantity);
+    });
+    
+    Object.entries(groupedParts).forEach(([status, quantity]) => {
+      const config = statusConfigs[status] || { label: "đang chờ", style: "bg-slate-100 text-slate-800 border-slate-200" };
+      badges.push(
+        <span key={status} className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-black shadow-sm ${config.style}`}>
+          {quantity} {config.label}
+        </span>
+      );
+    });
+  }
+  
+  // 2. Ô hiển thị phần số lượng chưa gửi
+  const totalSent = item.serverParts ? item.serverParts.reduce((sum, p) => sum + p.quantity, 0) : 0;
+  const unsentQty = item.quantity - totalSent;
+  if (unsentQty > 0) {
+    badges.push(
+      <span key="unsent" className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-700 shadow-sm">
+        {unsentQty} chưa gửi
+      </span>
+    );
+  }
+  
+  return badges;
+};
+
 export default function TableOrder() {
   const { tableId } = useParams();
   const navigate = useNavigate();
@@ -45,6 +93,7 @@ export default function TableOrder() {
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("tien_mat");
   const [cartPanelWidth, setCartPanelWidth] = useState(480);
+  const [serverItemsList, setServerItemsList] = useState([]);
   const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
@@ -57,18 +106,154 @@ export default function TableOrder() {
 
   const fetchData = async () => {
     try {
-      const [tableRes, menuRes, categoriesRes] = await Promise.all([
+      const [tableRes, menuRes, categoriesRes, activeOrdersRes] = await Promise.all([
         API.get(`/api/tables/${tableId}`),
         API.get("/api/menu"),
         API.get("/api/menu/categories"),
+        API.get("/api/orders/active"),
       ]);
-      setTable(tableRes.data);
+
+      const tableData = tableRes.data;
+      setTable(tableData);
       setMenu(menuRes.data.filter((m) => m.is_visible));
       setCategories(categoriesRes.data || []);
+
+      // 1. Lấy giỏ hàng nháp từ localStorage nếu có
+      const savedCartStr = localStorage.getItem(`cart_table_${tableId}`);
+      let localCart = savedCartStr ? JSON.parse(savedCartStr) : [];
+
+      // Dọn dẹp và gộp giỏ hàng local cũ để tránh trùng lặp
+      const groupedLocalCart = [];
+      localCart.forEach((lItem) => {
+        const existing = groupedLocalCart.find(c => Number(c.id) === Number(lItem.id));
+        if (existing) {
+          existing.quantity += Number(lItem.quantity);
+        } else {
+          groupedLocalCart.push({
+            ...lItem,
+            id: Number(lItem.id),
+            serverParts: lItem.serverParts || []
+          });
+        }
+      });
+      localCart = groupedLocalCart;
+
+      // 2. Tìm order đang hoạt động của bàn này
+      const activeOrder = activeOrdersRes.data.find(
+        (o) => o.table_id === Number(tableId)
+      );
+
+      if (activeOrder) {
+        setOrderId(activeOrder.id);
+        // Lấy chi tiết món ăn của order từ server
+        const orderDetailRes = await API.get(`/api/orders/${activeOrder.id}`);
+        const serverItems = orderDetailRes.data.items || [];
+        setServerItemsList(serverItems);
+
+        // Group server items by menu_item_id
+        const groupedCart = [];
+        serverItems.forEach((sItem) => {
+          const existing = groupedCart.find(c => Number(c.id) === Number(sItem.menu_item_id));
+          if (existing) {
+            existing.quantity += Number(sItem.quantity);
+            existing.serverParts.push({
+              orderItemId: sItem.id,
+              quantity: Number(sItem.quantity),
+              status: sItem.status
+            });
+          } else {
+            groupedCart.push({
+              id: Number(sItem.menu_item_id),
+              name: sItem.mon_ten,
+              price: Number(sItem.price),
+              quantity: Number(sItem.quantity),
+              serverParts: [{
+                orderItemId: sItem.id,
+                quantity: Number(sItem.quantity),
+                status: sItem.status
+              }],
+              note: sItem.note || "",
+              sendToKitchen: true
+            });
+          }
+        });
+
+        // Gộp giỏ hàng local và giỏ hàng server sử dụng kiểu so sánh số Number()
+        localCart.forEach((localItem) => {
+          const existing = groupedCart.find((g) => Number(g.id) === Number(localItem.id));
+          if (!existing) {
+            const hasSentPart = localItem.serverParts && localItem.serverParts.length > 0;
+            if (!hasSentPart) {
+              groupedCart.push({
+                ...localItem,
+                serverParts: []
+              });
+            }
+          } else {
+            if (localItem.quantity > existing.quantity) {
+              existing.quantity = localItem.quantity;
+            }
+          }
+        });
+
+        setCart(groupedCart);
+      } else {
+        setServerItemsList([]);
+        setOrderId(null);
+        setCart(localCart.filter(item => !item.serverParts || item.serverParts.length === 0).map(item => ({
+          ...item,
+          serverParts: []
+        })));
+      }
     } catch (err) {
       setError("Không tải được dữ liệu.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Tự động lưu giỏ hàng nháp vào localStorage khi thay đổi
+  useEffect(() => {
+    if (loading) return;
+    if (tableId && cart.length > 0) {
+      localStorage.setItem(`cart_table_${tableId}`, JSON.stringify(cart));
+    } else if (tableId && cart.length === 0) {
+      localStorage.removeItem(`cart_table_${tableId}`);
+    }
+  }, [cart, tableId, loading]);
+
+  const syncServerDeletions = async (currentOrderId) => {
+    // 1. Xóa các món không còn xuất hiện trong giỏ hàng
+    for (const serverItem of serverItemsList) {
+      const cartItem = cart.find(c => c.id === serverItem.menu_item_id);
+      if (!cartItem) {
+        await API.delete(`/api/orders/${currentOrderId}/items/${serverItem.id}`);
+      }
+    }
+    
+    // 2. Xử lý giảm số lượng đối với các món được giữ lại
+    for (const cartItem of cart) {
+      const totalSent = cartItem.serverParts ? cartItem.serverParts.reduce((sum, p) => sum + p.quantity, 0) : 0;
+      if (cartItem.quantity < totalSent) {
+        let remainingToKeep = cartItem.quantity;
+        // Phân bổ số lượng còn lại vào các serverParts, xóa bớt những phần không cần thiết
+        for (const part of cartItem.serverParts) {
+          if (remainingToKeep <= 0) {
+            await API.delete(`/api/orders/${currentOrderId}/items/${part.orderItemId}`);
+          } else if (remainingToKeep < part.quantity) {
+            await API.delete(`/api/orders/${currentOrderId}/items/${part.orderItemId}`);
+            await API.post(`/api/orders/${currentOrderId}/items`, {
+              menu_item_id: cartItem.id,
+              quantity: remainingToKeep,
+              note: cartItem.note || "",
+              status: part.status || "hoan_thanh"
+            });
+            remainingToKeep = 0;
+          } else {
+            remainingToKeep -= part.quantity;
+          }
+        }
+      }
     }
   };
 
@@ -102,7 +287,7 @@ export default function TableOrder() {
           c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
         );
       }
-      return [...prev, { ...item, quantity: 1, note: "", sendToKitchen: true }];
+      return [...prev, { ...item, quantity: 1, note: "", sendToKitchen: true, serverParts: [] }];
     });
   };
 
@@ -139,9 +324,26 @@ export default function TableOrder() {
     }
     
     // Kiểm tra xem có món nào mới hoặc tăng thêm số lượng cần gửi không
-    const itemsToPost = cart.filter(item => item.quantity > (item.sentQuantity || 0));
-    if (itemsToPost.length === 0) {
-      alert("Tất cả các món và số lượng hiện tại đã được gửi trước đó rồi!");
+    const itemsToPost = [];
+    cart.forEach(item => {
+      const totalSent = item.serverParts ? item.serverParts.reduce((sum, p) => sum + p.quantity, 0) : 0;
+      if (item.quantity > totalSent) {
+        itemsToPost.push({
+          ...item,
+          newQty: item.quantity - totalSent
+        });
+      }
+    });
+
+    const hasDeletionsOrReductions = serverItemsList.some(serverItem => {
+      const cartItem = cart.find(c => c.id === serverItem.menu_item_id);
+      if (!cartItem) return true;
+      const totalSent = cartItem.serverParts ? cartItem.serverParts.reduce((sum, p) => sum + p.quantity, 0) : 0;
+      return cartItem.quantity < totalSent;
+    });
+
+    if (itemsToPost.length === 0 && !hasDeletionsOrReductions) {
+      alert("Không có thay đổi nào để gửi bếp!");
       return;
     }
 
@@ -156,12 +358,16 @@ export default function TableOrder() {
         setOrderId(currentOrderId);
       }
 
+      // Thực hiện đồng bộ các món bị xóa hoặc giảm số lượng
+      if (hasDeletionsOrReductions) {
+        await syncServerDeletions(currentOrderId);
+      }
+
       // Thêm từng món mới/số lượng tăng thêm vào order
       for (const item of itemsToPost) {
-        const newQty = item.quantity - (item.sentQuantity || 0);
         await API.post(`/api/orders/${currentOrderId}/items`, {
           menu_item_id: item.id,
-          quantity: newQty,
+          quantity: item.newQty,
           note: item.note || "",
           status: item.sendToKitchen !== false ? 'cho' : 'hoan_thanh'
         });
@@ -173,17 +379,14 @@ export default function TableOrder() {
         await API.post(`/api/orders/${currentOrderId}/send`);
       }
 
-      // Cập nhật lại số lượng đã gửi (sentQuantity) cho các món trong giỏ
-      setCart(prev => prev.map(c => ({
-        ...c,
-        sentQuantity: c.quantity
-      })));
+      // Tải lại toàn bộ dữ liệu mới nhất từ server để đồng bộ chuẩn xác
+      await fetchData();
 
       setSuccess("Đã gửi đơn hàng thành công! Bạn có thể tiếp tục chỉnh sửa hoặc thêm món.");
-      alert("✅ Đã gửi đơn hàng thành công! Bạn có thể tiếp tục chỉnh sửa hoặc thêm món.");
+      alert("Đã gửi đơn hàng thành công! Bạn có thể tiếp tục chỉnh sửa hoặc thêm món.");
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi gửi order!");
-      alert("❌ Lỗi: " + (err.response?.data?.message || err.message));
+      alert("Lỗi: " + (err.response?.data?.message || err.message));
     } finally {
       setSubmitting(false);
     }
@@ -208,30 +411,25 @@ export default function TableOrder() {
         setOrderId(currentOrderId);
       }
 
-      // 2. Thêm các món mới trong giỏ hàng lên server (nếu có)
-      const itemsToPost = cart.filter(item => item.quantity > (item.sentQuantity || 0));
-      for (const item of itemsToPost) {
-        const newQty = item.quantity - (item.sentQuantity || 0);
-        await API.post(`/api/orders/${currentOrderId}/items`, {
-          menu_item_id: item.id,
-          quantity: newQty,
-          note: item.note || "",
-          status: item.sendToKitchen !== false ? 'cho' : 'hoan_thanh'
-        });
-      }
-
-      // 3. Tiến hành thanh toán
+      // 2. Tiến hành thanh toán và gửi kèm danh sách món ăn thực tế còn lại trong bàn
       const checkoutRes = await API.post(`/api/payment/${currentOrderId}/checkout`, {
         payment_method: paymentMethod,
+        items: cart.map(item => ({
+          menu_item_id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          note: item.note || ""
+        }))
       });
 
       const methodLabel = paymentMethod === "tien_mat" ? "Tiền mặt" : paymentMethod === "chuyen_khoan" ? "Chuyển khoản" : "Mã QR";
-      alert(`✅ Thanh toán thành công! Số tiền: ${formatMoney(checkoutRes.data.final_amount)} (${methodLabel})`);
+      alert(`Thanh toán thành công! Số tiền: ${formatMoney(checkoutRes.data.final_amount)} (${methodLabel})`);
       setCart([]);
+      localStorage.removeItem(`cart_table_${tableId}`);
       navigate("/staff/tables");
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi thanh toán!");
-      alert("❌ Lỗi thanh toán: " + (err.response?.data?.message || err.message));
+      alert("Lỗi thanh toán: " + (err.response?.data?.message || err.message));
     } finally {
       setSubmitting(false);
     }
@@ -334,7 +532,10 @@ export default function TableOrder() {
                   />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">{item.name}</p>
-                    <p className="text-xs text-green-600">{formatMoney(item.price)}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                      <span className="text-xs text-green-600 font-semibold mr-1">{formatMoney(item.price)}</span>
+                      {renderStatusBadges(item)}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1">
@@ -396,6 +597,23 @@ export default function TableOrder() {
                 ))}
               </div>
             </div>
+
+            {(paymentMethod === "chuyen_khoan" || paymentMethod === "qr") && totalAmount > 0 && (
+              <div className="flex flex-col items-center gap-2 bg-white border border-slate-100 p-2.5 rounded-xl shadow-sm">
+                <div className="w-[120px] h-[120px] border border-slate-100 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50">
+                  <img
+                    src={`https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-compact2.png?amount=${totalAmount}&addInfo=NHWOW%20${orderId || 'BAN_' + tableId}&accountName=${encodeURIComponent(BANK_CONFIG.accountName)}`}
+                    alt="VietQR Code"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="w-full space-y-0.5 text-[10px] font-semibold text-slate-500 text-center">
+                  <p><span className="font-bold text-slate-800">STK VCB:</span> {BANK_CONFIG.accountNo}</p>
+                  <p><span className="font-bold text-slate-800">Tên:</span> {BANK_CONFIG.accountName}</p>
+                  <p><span className="font-bold text-slate-800">Nội dung:</span> <span className="font-mono bg-slate-50 px-1 border border-slate-200/50 rounded font-bold text-slate-800">NHWOW {orderId || 'BAN_' + tableId}</span></p>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex gap-2">

@@ -93,7 +93,7 @@ exports.applyPromotion = async (req, res) => {
 
 // THANH TOÁN
 exports.checkout = async (req, res) => {
-  const { payment_method, customer_id } = req.body;
+  const { payment_method, customer_id, items } = req.body;
   const order_id = req.params.id;
   try {
     // Lấy thông tin order
@@ -107,10 +107,29 @@ exports.checkout = async (req, res) => {
       return res.status(400).json({ message: 'Order đã được thanh toán!' });
     }
 
+    // Ghi đè lại toàn bộ món ăn thực tế còn lại trong bàn
+    if (items && Array.isArray(items)) {
+      await db.query('DELETE FROM order_items WHERE order_id=?', [order_id]);
+      for (const item of items) {
+        await db.query(
+          `INSERT INTO order_items 
+            (order_id, menu_item_id, quantity, price, note, status) 
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [order_id, item.menu_item_id, item.quantity, item.price, item.note || null, 'hoan_thanh']
+        );
+      }
+    }
+
+    // Tính toán lại tổng tiền dựa trên các món thực tế đã ghi nhận
+    const [sumRes] = await db.query(
+      'SELECT SUM(price * quantity) AS order_total FROM order_items WHERE order_id=? AND status != "huy"',
+      [order_id]
+    );
+    const total = sumRes[0]?.order_total || 0;
+
     // Lấy thuế
     const [config] = await db.query('SELECT tax_rate FROM config LIMIT 1');
     const tax_rate = config.length > 0 ? config[0].tax_rate : 0;
-    const total = order[0].total_amount || 0;
     const tax_amount = (total * tax_rate) / 100;
     const discount = order[0].discount_amount || 0;
     const final_amount = total + tax_amount - discount;

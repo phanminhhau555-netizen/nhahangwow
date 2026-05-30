@@ -15,6 +15,12 @@ const PAYMENT_METHODS = {
   qr: "Mã QR"
 };
 
+const BANK_CONFIG = {
+  bankId: "VCB",
+  accountNo: "1049144528",
+  accountName: "PHAM TRUONG PHAT"
+};
+
 export default function StaffSalesPage() {
   const getTodayString = () => {
     const today = new Date();
@@ -337,7 +343,7 @@ export default function StaffSalesPage() {
                     <th className="p-3">Thanh toán</th>
                     <th className="p-3">Nhân viên tạo</th>
                     <th className="p-3">Trạng thái</th>
-                    <th className="p-3 text-right">Chi tiết</th>
+                    <th className="p-3 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
@@ -357,12 +363,31 @@ export default function StaffSalesPage() {
                           </span>
                         </td>
                         <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleViewOrder(order)}
-                            className="text-emerald-700 hover:text-emerald-800 font-bold text-xs"
-                          >
-                            Xem
-                          </button>
+                          <div className="flex justify-end gap-3">
+                            <button
+                              onClick={() => handleViewOrder(order)}
+                              className="text-emerald-700 hover:text-emerald-800 font-bold text-xs"
+                            >
+                              Xem
+                            </button>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Bạn có chắc chắn muốn xóa hoàn toàn hóa đơn #${order.id} không? Thao tác này không thể hoàn tác.`)) {
+                                  try {
+                                    await API.delete(`/api/orders/${order.id}`);
+                                    alert("Xóa hóa đơn thành công!");
+                                    fetchOrders();
+                                  } catch (err) {
+                                    alert("Lỗi khi xóa hóa đơn: " + (err.response?.data?.message || err.message));
+                                  }
+                                }
+                              }}
+                              className="text-rose-600 hover:text-rose-700 font-bold text-xs"
+                            >
+                              Xóa
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -420,7 +445,7 @@ export default function StaffSalesPage() {
                 <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">Danh sách món ăn đã gọi</h4>
                 {loadingDetail ? (
                   <p className="text-slate-400 text-xs font-semibold py-8 text-center">Đang tải danh sách món ăn...</p>
-                ) : !orderDetail || !orderDetail.items || orderDetail.items.length === 0 ? (
+                ) : !orderDetail || !orderDetail.items || orderDetail.items.filter(item => item.status !== "huy").length === 0 ? (
                   <p className="text-slate-400 text-xs font-semibold py-8 text-center">Không có món ăn nào trong đơn hàng này</p>
                 ) : (
                   <div className="rounded-xl border border-slate-100 overflow-hidden">
@@ -435,7 +460,7 @@ export default function StaffSalesPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-                        {orderDetail.items.map((item) => (
+                        {orderDetail.items.filter(item => item.status !== "huy").map((item) => (
                           <tr key={item.id} className="hover:bg-slate-50/50">
                             <td className="p-2">
                               <span className="font-bold text-slate-900 block">{item.mon_ten}</span>
@@ -485,6 +510,27 @@ export default function StaffSalesPage() {
                       </button>
                     ))}
                   </div>
+
+                  {(checkoutMethod === "chuyen_khoan" || checkoutMethod === "qr") && (
+                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-white border border-slate-100 p-3 rounded-xl shadow-sm">
+                      <div className="w-[140px] h-[140px] border border-slate-100 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50">
+                        <img
+                          src={`https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-compact2.png?amount=${selectedOrder.total_amount}&addInfo=NHWOW%20${selectedOrder.id}&accountName=${encodeURIComponent(BANK_CONFIG.accountName)}`}
+                          alt="VietQR Code"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1 text-xs font-semibold text-slate-600">
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Thông tin chuyển khoản</p>
+                        <p><span className="font-bold text-slate-800">Ngân hàng:</span> {BANK_CONFIG.bankId}</p>
+                        <p><span className="font-bold text-slate-800">Số tài khoản:</span> {BANK_CONFIG.accountNo}</p>
+                        <p><span className="font-bold text-slate-800">Chủ tài khoản:</span> {BANK_CONFIG.accountName}</p>
+                        <p><span className="font-bold text-slate-800">Số tiền:</span> <span className="font-bold text-emerald-700">{formatMoney(selectedOrder.total_amount)}</span></p>
+                        <p><span className="font-bold text-slate-800">Nội dung:</span> <span className="font-mono bg-slate-50 px-1.5 py-0.5 border border-slate-200/50 rounded font-bold text-slate-800">NHWOW {selectedOrder.id}</span></p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-2 pt-1">
                     <button
                       onClick={async () => {
@@ -516,15 +562,35 @@ export default function StaffSalesPage() {
                 <span className="text-xs font-bold text-slate-500">Tổng thanh toán:</span>
                 <span className="text-base font-black text-emerald-700">{formatMoney(selectedOrder.total_amount || 0)}</span>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedOrder(null);
-                  setOrderDetail(null);
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors shadow-md shadow-emerald-700/10"
-              >
-                Đóng
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Bạn có chắc chắn muốn xóa hoàn toàn hóa đơn này không? Thao tác này không thể hoàn tác.")) {
+                      try {
+                        await API.delete(`/api/orders/${selectedOrder.id}`);
+                        alert("Xóa hóa đơn thành công!");
+                        setSelectedOrder(null);
+                        setOrderDetail(null);
+                        fetchOrders();
+                      } catch (err) {
+                        alert("Lỗi khi xóa hóa đơn: " + (err.response?.data?.message || err.message));
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/10"
+                >
+                  Xóa hóa đơn
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    setOrderDetail(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors shadow-md shadow-emerald-700/10"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         </div>
